@@ -2,6 +2,16 @@
 title: "codebook"
 format: html
 editor: visual
+jupyter: python3
 ---
 
-## 
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+app_data <- read_csv("data/application_train.csv")
+
+```
