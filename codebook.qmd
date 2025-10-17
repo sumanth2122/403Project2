@@ -1,17 +1,34 @@
 ---
-title: "codebook"
+title: "Codebook"
 format: html
 editor: visual
 jupyter: python3
 ---
 
-
+## Imports
 ```{r}
 library(tidyverse)
 ```
 
-
+## Reading in the Data
 ```{r}
 app_data <- read_csv("data/application_train.csv")
+```
+
+## Data Engineering
+```{r}
 
 ```
+
+## Metric Custom Functions
+```{r}
+
+```
+
+
+## Models
+```{r}
+
+```
+
+
