@@ -6,9 +6,11 @@ jupyter: python3
 ---
 
 ## Imports
+
 ```{r}
 library(tidyverse)
 library(readr) 
+library(tidymodels)
 application_test<-read_csv(here::here("data/application_test.csv")) 
 application_train <- read_csv(here::here("data/application_train.csv")) 
 bureau_bal <- read_csv(here::here("data/bureau_balance.csv"))
@@ -21,24 +23,29 @@ sample_sub <- read_csv(here::here("data/sample_submission.csv"))
 ```
 
 ## Reading in the Data
+
 ```{r}
-app_data <- read_csv("data/application_train.csv")
+set.seed(123)
+train_size <- floor(0.80 * nrow(application_train))
+train_indices <- sample(seq_len(nrow(application_train)), size = train_size)
+train_data <- application_train[train_indices, ]
+val_data <- application_train[-train_indices, ]
 ```
 
 ## Data Engineering
+
 ```{r}
 
 ```
 
 ## Metric Custom Functions
+
 ```{r}
 
 ```
-
 
 ## Models
+
 ```{r}
 
 ```
-
-
