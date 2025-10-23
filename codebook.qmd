@@ -24,13 +24,28 @@ sample_sub <- read_csv(here::here("data/sample_submission.csv"))
 
 ## Reading in the Data
 
+### Random Split of Data
 ```{r}
 set.seed(123)
 train_size <- floor(0.80 * nrow(application_train))
 train_indices <- sample(seq_len(nrow(application_train)), size = train_size)
-train_data <- application_train[train_indices, ]
-val_data <- application_train[-train_indices, ]
+ran_train_data <- application_train[train_indices, ]
+ran_val_data <- application_train[-train_indices, ]
 ```
+
+### Stratified Split
+```{r}
+split_strat <- initial_split(application_train, prop = 0.8, strata = "target")
+strat_train_data <- training(split_strat)
+strat_val_data <- testing(split_strat)
+```
+
+### Non Random Split - Represent Test Data
+
+```{r}
+glimpse(application_test)
+```
+
 
 ## Data Engineering
 
