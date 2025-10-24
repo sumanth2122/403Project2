@@ -37,7 +37,7 @@ ran_val_data <- application_train[-train_indices, ]
 ### Stratified Split
 
 ```{r}
-split_strat <- initial_split(application_train, prop = 0.8, strata = "target")
+split_strat <- initial_split(application_train, prop = 0.8, strata = "TARGET")
 strat_train_data <- training(split_strat)
 strat_val_data <- testing(split_strat)
 ```
@@ -56,15 +56,102 @@ glimpse(application_test)
 
 ## Metric Custom Functions
 
+### ROC-AUC, Accuracy, F-1, Specificity
 ```{r}
+accuracy <- function(y_hat, y){
+    correct <- sum(y_hat == y)
+    total <- length(y)
+    return(correct / total)
+}
+
+precision <- function(y_hat, y){
+    tp <- sum ((y_hat == 1) && (y ==1))
+    fp <- sum ((y_hat == 1) && (y == 0))
+    precision <- tp / (tp+fp)
+    return(precision)
+}
+
+recall <- function(y_hat, y){
+    tp <- sum ((y_hat == 1) && (y ==1))
+    fn <- sum ((y_hat == 0) && (y == 1))
+    recall <- tp / (tp+fn)
+    return(recall)
+}
+
+f1 <- function(y_hat, y){
+    precision <- precision(y_hat, y)
+    recall <- recall(y_hat, y)
+    return (2 * (precision * recall) / (precision + recall))
+}
+
+specificity <- function(y_hat, y){
+    fp <- sum ((y_hat == 1) && (y == 0))
+    tn <- sum ((y_hat == 0) && (y == 0))
+    return (tn/(tn+fp))
+}
+
+roc_auc <- function(y, y_hat){
+    thresholds <- seq(0, 1, by = 0.01)
+    tpr <- c()
+    fpr <- c()
+    for (t in thresholds){
+        tp <- sum((y_hat >= t) && (y == 1))
+        fn <- sum((y_hat < t) && (y == 1))
+        fp <- sum((y_hat >= t) && (y == 0))
+        tn <- sum((y_hat < t) && (y == 0))
+        tpr <- c(tpr, tp / (tp + fn))
+        fpr <- c(fpr, fp / (fp + tn))
+    }
+    auc <- 0
+    for (i in 2:length(tpr)){
+        auc <- auc + (fpr[i] - fpr[i-1]) * (tpr[i] + tpr[i-1]) / 2
+    }
+    return(auc)
+}
 
 ```
 
-## Models
+### Cross Validation Function
 
 ```{r}
+<<<<<<< HEAD
 #target: response variable 
 #for now: pass in a column of predictor variables (we will have to determine the predictor variables)
+=======
+cross_val <- function(model, data, k =5){
+    set.seed(23)
+    folds <- sample((rep(1:k, length.out = nrow(data))))
+    metrics <- data.frame(Accuracy = numeric(k),
+                          F1 = numeric(k),
+                          Specificity = numeric(k),
+                          ROC_AUC = numeric(k))
+    for (i in 1:k){
+        train_fold = data[folds != i, ]
+        val_fold = data[folds == i,]
+
+        model_fit(model, data = train_fold)
+        preds <- predict(model, val_fold, type = "prob")
+        y_hat <- ifelse(preds$.pred_1 >= 0.5, 1, 0)
+        y <- val_fold$TARGET
+        metrics$Accuracy[i] <- accuracy(y_hat, y)
+        metrics$F1[i] <- f1(y_hat, y)
+        metrics$Specificity[i] <- specificity(y_hat, y)
+        metrics$ROC_AUC[i] <- roc_auc(y, preds$.pred_1)
+        metrics$Accuracy[k+1] <- mean(metrics$Accuracy)
+        metrics$F1[k+1] <- mean(metrics$F1)
+        metrics$Specificity[k+1] <- mean(metrics$Specificity)
+        metrics$ROC_AUC[k+1] <- mean(metrics$ROC_AUC)
+    }
+    return(metrics)
+}
+```
+
+
+
+## Models
+### Linear 
+```{r}
+>>>>>>> cabb008f594e7cd95563fd89a547f4c4ad726330
 
 #priority: run a logistic regression model 
 
