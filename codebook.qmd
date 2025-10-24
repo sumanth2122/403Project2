@@ -25,6 +25,7 @@ sample_sub <- read_csv(here::here("data/sample_submission.csv"))
 ## Reading in the Data
 
 ### Random Split of Data
+
 ```{r}
 set.seed(123)
 train_size <- floor(0.80 * nrow(application_train))
@@ -34,6 +35,7 @@ ran_val_data <- application_train[-train_indices, ]
 ```
 
 ### Stratified Split
+
 ```{r}
 split_strat <- initial_split(application_train, prop = 0.8, strata = "target")
 strat_train_data <- training(split_strat)
@@ -45,7 +47,6 @@ strat_val_data <- testing(split_strat)
 ```{r}
 glimpse(application_test)
 ```
-
 
 ## Data Engineering
 
@@ -62,5 +63,10 @@ glimpse(application_test)
 ## Models
 
 ```{r}
+#target: response variable 
+#for now: pass in a column of predictor variables (we will have to determine the predictor variables)
+
+#priority: run a logistic regression model 
+
 
 ```
