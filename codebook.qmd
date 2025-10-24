@@ -146,8 +146,31 @@ cross_val <- function(model, data, k =5){
 ## Models
 ### Linear 
 ```{r}
-
-#priority: run a logistic regression model 
-
-
+application_train
 ```
+
+```{r}
+#taking a look at the datasets first
+strat_train_data
+data$target <- as.factor(data$target)
+data$target <- droplevels(data$target)
+str(data$target)
+```
+```{r}
+ran_train_data
+```
+```{r}
+#GET DONE BY TUESDAY/WEDNESDAY!!
+#failing: convert TARGET variable to a factor
+strat_train_data$TARGET <- as.factor(strat_train_data$TARGET)
+fitted_logistic_model <- logistic_reg()  %>%
+  #set the engine
+  set_engine("glm") %>%
+  #set the mode 
+  set_mode("classification") %>% 
+  #fit the model
+  fit(TARGET~., data=strat_train_data)
+
+tidy(fitted_logistic_model)
+```
+
