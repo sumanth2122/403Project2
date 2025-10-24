@@ -110,6 +110,39 @@ roc_auc <- function(y, y_hat){
 
 ```
 
+### Cross Validation Function
+
+```{r}
+cross_val <- function(model, data, k =5){
+    set.seed(23)
+    folds <- sample((rep(1:k, length.out = nrow(data))))
+    metrics <- data.frame(Accuracy = numeric(k),
+                          F1 = numeric(k),
+                          Specificity = numeric(k),
+                          ROC_AUC = numeric(k))
+    for (i in 1:k){
+        train_fold = data[folds != i, ]
+        val_fold = data[folds == i,]
+
+        model_fit(model, data = train_fold)
+        preds <- predict(model, val_fold, type = "prob")
+        y_hat <- ifelse(preds$.pred_1 >= 0.5, 1, 0)
+        y <- val_fold$TARGET
+        metrics$Accuracy[i] <- accuracy(y_hat, y)
+        metrics$F1[i] <- f1(y_hat, y)
+        metrics$Specificity[i] <- specificity(y_hat, y)
+        metrics$ROC_AUC[i] <- roc_auc(y, preds$.pred_1)
+        metrics$Accuracy[k+1] <- mean(metrics$Accuracy)
+        metrics$F1[k+1] <- mean(metrics$F1)
+        metrics$Specificity[k+1] <- mean(metrics$Specificity)
+        metrics$ROC_AUC[k+1] <- mean(metrics$ROC_AUC)
+    }
+    return(metrics)
+}
+```
+
+
+
 ## Models
 ### Linear 
 ```{r}
