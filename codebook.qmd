@@ -35,7 +35,8 @@ ran_val_data <- application_train[-train_indices, ]
 
 ### Stratified Split
 ```{r}
-split_strat <- initial_split(application_train, prop = 0.8, strata = "target")
+library(tidymodels)
+split_strat <- initial_split(application_train, prop = 0.8, strata = "TARGET")
 strat_train_data <- training(split_strat)
 strat_val_data <- testing(split_strat)
 ```
