@@ -144,33 +144,48 @@ cross_val <- function(model, data, k =5){
 
 
 ## Models
-### Linear 
+### Linear (Taras Part)
 ```{r}
-application_train
+#concatanate string for logistic regression here
+
+```
+
+
+
+```{r}
+#logistic regression model function here: we would pass in the training data sets for the data frame (strat_train_data, ran_train_data)!! 
+#generates predictions from the training data sets! 
+logistic_regression_model_fit <- function(trainDataframe,yResponse,xPredictors,testDataFrame)
+{
+  fitted_logistic_model <- logistic_reg() %>% 
+    #set the engine: 
+    set_engine("glm") %>% 
+    #set the mode: 
+    set_mode("classification")%>%
+    #Fit the Model 
+    fit(yResponse~xPredictors,data=dataframe)
+  tidy(fitted_logistic_model) #generates a summary table with the intercepts
+  
+  #generate test prediction for model evaluation: pass in trained model object, test data set, and type of prediction which is "class" 
+  pred_class <- predict(fitted_logistic_model,new_data=testDataFrame,type="class")
+  #printing out the test prediction 
+  pred_class
+  
+  #generate predictions for class probabilities here: 
+  class_prob_prediction <- predict(fitted_logistic_model,new_data=testDataFrame,type="prob")
+  
+  #printing out probability of prediction for each class
+  class_prob_prediction
+  
+}
+
 ```
 
 ```{r}
-#taking a look at the datasets first
-strat_train_data
-data$target <- as.factor(data$target)
-data$target <- droplevels(data$target)
-str(data$target)
-```
-```{r}
-ran_train_data
-```
-```{r}
-#GET DONE BY TUESDAY/WEDNESDAY!!
-#failing: convert TARGET variable to a factor
-strat_train_data$TARGET <- as.factor(strat_train_data$TARGET)
-fitted_logistic_model <- logistic_reg()  %>%
-  #set the engine
-  set_engine("glm") %>%
-  #set the mode 
-  set_mode("classification") %>% 
-  #fit the model
-  fit(TARGET~., data=strat_train_data)
 
-tidy(fitted_logistic_model)
 ```
+
+
+
+
 
