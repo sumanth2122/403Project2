@@ -199,11 +199,42 @@ logistic_regression_model_fit <- function(trainDataframe,yResponse,xPredictors,t
 
 
 
+```{r}
+#support vector machine classification model here
+
+SVMClassification <- function(trainData,testData,yReponse,xPredictors)
+{
+  svm_model <- (cost=1) %>%
+    set_mode("classification") %>% 
+    set_engine("LiblineaR")
+  
+  #fit the classification model on train data!! 
+  svmModel_fit <- svm_model %>% fit(yResponse ~ xPredictors,data=trainData)
+  svmModel_fit
+  
+  #conduct prediction with the test data: 
+  predict(svmModel_fit,testData)
+}
+```
+
+
+```{r}
+#run SVMClassification on strat_train_data
+
+
+```
 
 
 
+```{r}
+#run SVMClassification on ran_train_data
+```
 
 
+```{r}
+#run SVMClassification on another train dataset 
+
+```
 
 
 
