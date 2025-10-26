@@ -182,8 +182,28 @@ logistic_regression_model_fit <- function(trainDataframe,yResponse,xPredictors,t
 ```
 
 ```{r}
-
+#run logistic_regression_model_fit on strat_train_data
 ```
+
+
+```{r}
+#run logistic_regression_model_fit on ran_train_data
+```
+
+
+```{r}
+#run logistic_regression_model_fit on any other train dataset
+```
+
+
+
+
+
+
+
+
+
+
 
 
 
