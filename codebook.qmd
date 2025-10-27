@@ -148,6 +148,13 @@ cross_val <- function(model, data, k =5){
 ```{r}
 #concatanate string for logistic regression here
 
+generateModelFormula <- function(yPredictor,xPredictors)
+{
+  formula <- as.formula(paste(yResponse,"~",paste(xPredictors,collapse="+")))
+  return formula
+}
+
+
 ```
 
 
@@ -157,13 +164,14 @@ cross_val <- function(model, data, k =5){
 #generates predictions from the training data sets! 
 logistic_regression_model_fit <- function(trainDataframe,yResponse,xPredictors,testDataFrame)
 {
+  formula <- generateModelFormula(yResponse,xPredictors)
   fitted_logistic_model <- logistic_reg() %>% 
     #set the engine: 
     set_engine("glm") %>% 
     #set the mode: 
     set_mode("classification")%>%
     #Fit the Model 
-    fit(yResponse~xPredictors,data=dataframe)
+    fit(formula,data=dataframe)
   tidy(fitted_logistic_model) #generates a summary table with the intercepts
   
   #generate test prediction for model evaluation: pass in trained model object, test data set, and type of prediction which is "class" 
@@ -204,15 +212,16 @@ logistic_regression_model_fit <- function(trainDataframe,yResponse,xPredictors,t
 
 SVMClassification <- function(trainData,testData,yReponse,xPredictors)
 {
-  svm_model <- (cost=1) %>%
+  svm_model <- svm_linear(cost=1) %>%
     set_mode("classification") %>% 
     set_engine("LiblineaR")
   
   #fit the classification model on train data!! 
-  svmModel_fit <- svm_model %>% fit(yResponse ~ xPredictors,data=trainData)
+  formula <- generateModelFormula(yResponse,xPredictors)
+  svmModel_fit <- svm_model %>% fit(formula,data=trainData)
   svmModel_fit
   
-  #conduct prediction with the test data: 
+  #uses train model fit to conduct prediction of response variable with the test data: 
   predict(svmModel_fit,testData)
 }
 ```
