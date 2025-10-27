@@ -22,6 +22,22 @@ prevapp <- read_csv(here::here("data/previous_application.csv"))
 sample_sub <- read_csv(here::here("data/sample_submission.csv"))
 ```
 
+```{r}
+install.packages("LiblineaR")
+```
+```{r}
+install.packages("discrim")
+library(discrim)
+```
+
+
+```{r}
+library(MASS)
+```
+
+
+
+
 ## Reading in the Data
 
 ### Random Split of Data
@@ -147,11 +163,11 @@ cross_val <- function(model, data, k =5){
 ### Linear (Taras Part)
 ```{r}
 #concatanate string for logistic regression here
-
-generateModelFormula <- function(yPredictor,xPredictors)
+#WORKS
+generateModelFormula <- function(yResponse,xPredictors)
 {
   formula <- as.formula(paste(yResponse,"~",paste(xPredictors,collapse="+")))
-  return formula
+  return(formula)
 }
 
 
@@ -160,10 +176,51 @@ generateModelFormula <- function(yPredictor,xPredictors)
 
 
 ```{r}
+yResponse="TARGET"
+xPredictors=c("AMT_INCOME_TOTAL","AMT_CREDIT","AMT_ANNUITY","AMT_GOODS_PRICE")
+generateModelFormula(yPredictor,xPredictors)
+```
+
+
+
+```{r}
+#we must factor the target variable in order to get the classification to work!!
+strat_train_data$TARGET <- as.factor(strat_train_data$TARGET)
+```
+
+
+
+```{r}
+ran_train_data$TARGET <- as.factor(ran_train_data$TARGET)
+```
+
+
+
+
+```{r}
+ran_val_data$TARGET <- as.factor(ran_val_data$TARGET)
+```
+
+
+
+
+
+
+```{r}
 #logistic regression model function here: we would pass in the training data sets for the data frame (strat_train_data, ran_train_data)!! 
 #generates predictions from the training data sets! 
-logistic_regression_model_fit <- function(trainDataframe,yResponse,xPredictors,testDataFrame)
+
+
+
+#add in testDataFrame once i obtain it!! 
+#testDataFrame
+
+logistic_regression_model_fit <- function(trainDataFrame,yResponse,xPredictors)
 {
+  #yResponse needs to be converted to a factor!! 
+  #trainDataFrame$yResponse <- as.factor(trainDataFrame$yResponse)
+  
+  #comment this out for now
   formula <- generateModelFormula(yResponse,xPredictors)
   fitted_logistic_model <- logistic_reg() %>% 
     #set the engine: 
@@ -171,19 +228,19 @@ logistic_regression_model_fit <- function(trainDataframe,yResponse,xPredictors,t
     #set the mode: 
     set_mode("classification")%>%
     #Fit the Model 
-    fit(formula,data=dataframe)
+    fit(formula,data=trainDataFrame)
   tidy(fitted_logistic_model) #generates a summary table with the intercepts
   
   #generate test prediction for model evaluation: pass in trained model object, test data set, and type of prediction which is "class" 
-  pred_class <- predict(fitted_logistic_model,new_data=testDataFrame,type="class")
+  #pred_class <- predict(fitted_logistic_model,new_data=testDataFrame,type="class")
   #printing out the test prediction 
-  pred_class
+  #pred_class
   
   #generate predictions for class probabilities here: 
-  class_prob_prediction <- predict(fitted_logistic_model,new_data=testDataFrame,type="prob")
+  #class_prob_prediction <- predict(fitted_logistic_model,new_data=testDataFrame,type="prob")
   
   #printing out probability of prediction for each class
-  class_prob_prediction
+  #class_prob_prediction
   
 }
 
@@ -191,16 +248,24 @@ logistic_regression_model_fit <- function(trainDataframe,yResponse,xPredictors,t
 
 ```{r}
 #run logistic_regression_model_fit on strat_train_data
+yResponse="TARGET"
+logistic_regression_model_fit(strat_train_data,yResponse,xPredictors)
+
 ```
 
 
 ```{r}
 #run logistic_regression_model_fit on ran_train_data
+yResponse="TARGET"
+logistic_regression_model_fit(ran_train_data,yResponse,xPredictors)
 ```
 
 
 ```{r}
-#run logistic_regression_model_fit on any other train dataset
+#run logistic_regression_model_fit on validation train dataset
+#run logistic_regression_model_fit on ran_val_data
+yResponse="TARGET"
+logistic_regression_model_fit(ran_val_data,yResponse,xPredictors)
 ```
 
 
@@ -209,27 +274,32 @@ logistic_regression_model_fit <- function(trainDataframe,yResponse,xPredictors,t
 
 ```{r}
 #support vector machine classification model here
+#pass in testData once i have it!!
 
-SVMClassification <- function(trainData,testData,yReponse,xPredictors)
+SVMClassification <- function(trainData,yReponse,xPredictors,costVal,marginVal)
 {
-  svm_model <- svm_linear(cost=1) %>%
+  #costVal and marginVal is a hyperparameter here!! 
+  svm_model <- svm_linear(cost=costVal,margin=marginVal) %>%
     set_mode("classification") %>% 
     set_engine("LiblineaR")
   
   #fit the classification model on train data!! 
   formula <- generateModelFormula(yResponse,xPredictors)
+  formula
   svmModel_fit <- svm_model %>% fit(formula,data=trainData)
   svmModel_fit
   
   #uses train model fit to conduct prediction of response variable with the test data: 
-  predict(svmModel_fit,testData)
+  #predict(svmModel_fit,testData)
 }
 ```
 
 
 ```{r}
 #run SVMClassification on strat_train_data
-
+costVal=0.1
+marginVal=1
+SVMClassification(strat_train_data,yResponse,xPredictors,costVal,marginVal)
 
 ```
 
@@ -237,15 +307,71 @@ SVMClassification <- function(trainData,testData,yReponse,xPredictors)
 
 ```{r}
 #run SVMClassification on ran_train_data
+costVal=0.1
+marginVal=1
+SVMClassification(ran_train_data,yResponse,xPredictors,costVal,marginVal)
 ```
 
 
 ```{r}
-#run SVMClassification on another train dataset 
+#run SVMClassification on validation train dataset 
+#run SVMClassification on val_train_data
+costVal=0.1
+marginVal=1
+SVMClassification(ran_val_data,yResponse,xPredictors,costVal,marginVal)
 
 ```
 
 
 
+```{r}
+#RUN THIS ONE NEXT!! 
 
+#LDA: Linear Discriminant Analysis Model function here
+
+#dont have testData as of right now, so currently exclude 
+#testData
+LDA_model_fit <- function(trainData,yResponse,xPredictors)
+{
+  discrim_model <- discrim_linear(
+    mode="classification",
+    penalty=NULL,
+    regularization_method=NULL,
+    engine="MASS"
+  )
+  
+  formula <- generateModelFormula(yResponse,xPredictors)
+  discrim_modelFit <- discrim_model %>% fit(formula,data=trainData)
+  
+  discrim_modelFit
+  
+  #uncomment line below once i have the testData
+  #predict(discrim_modelFit,testData)
+  
+}
+
+
+```
+
+```{r}
+#run LDA on strat_train_data
+LDA_model_fit(strat_train_data,yResponse,xPredictors)
+```
+
+
+
+
+```{r}
+#run LDA on ran_train_data
+LDA_model_fit(ran_train_data,yResponse,xPredictors)
+
+```
+
+
+
+```{r}
+#running data on validation training data 
+#run LDA on ran_val_data
+LDA_model_fit(ran_val_data,yResponse,xPredictors)
+```
 
