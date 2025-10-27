@@ -25,6 +25,7 @@ sample_sub <- read_csv(here::here("data/sample_submission.csv"))
 ## Reading in the Data
 
 ### Random Split of Data
+
 ```{r}
 set.seed(123)
 train_size <- floor(0.80 * nrow(application_train))
@@ -34,6 +35,7 @@ ran_val_data <- application_train[-train_indices, ]
 ```
 
 ### Stratified Split
+
 ```{r}
 library(tidymodels)
 split_strat <- initial_split(application_train, prop = 0.8, strata = "TARGET")
@@ -46,7 +48,6 @@ strat_val_data <- testing(split_strat)
 ```{r}
 glimpse(application_test)
 ```
-
 
 ## Data Engineering
 
@@ -76,6 +77,124 @@ data.frame(cor_mat) |>
               gather(key="variable", value="correlation", -rowname) |>
               filter(abs(correlation) > 0.5)|>
               filter(abs(correlation) != 1.0)
+
+
+```
+
+```{r}
+
+
+
+
+prev_en <- prevapp |>
+  mutate(
+    app_to_credit = AMT_APPLICATION / AMT_CREDIT,
+    ann_to_credit = AMT_ANNUITY     / AMT_CREDIT,
+    valid = NAME_CONTRACT_STATUS == "Approved" &
+            AMT_CREDIT  > 0 &
+            AMT_ANNUITY > 0 &
+            CNT_PAYMENT > 0,
+    INTEREST       = ifelse(valid, CNT_PAYMENT * AMT_ANNUITY - AMT_CREDIT, NA_real_),
+    INTEREST_RATE  = ifelse(valid, 24 * INTEREST/(AMT_CREDIT * (CNT_PAYMENT + 1)), NA_real_),
+    INTEREST_SHARE = ifelse(AMT_CREDIT > 0, INTEREST / AMT_CREDIT, NA_real_)
+  )
+
+prev_all <- prev_en |>
+  group_by(SK_ID_CURR) |>
+  summarise(
+    prev_app_count           = n(),
+    prev_amt_credit_mean     = mean(AMT_CREDIT, na.rm = TRUE),
+    prev_cnt_payment_mean    = mean(CNT_PAYMENT, na.rm = TRUE),
+    prev_app_to_credit_mean  = mean(app_to_credit, na.rm = TRUE),
+    prev_ann_to_credit_mean  = mean(ann_to_credit, na.rm = TRUE),
+    prev_approved_rate       = mean(NAME_CONTRACT_STATUS == "Approved", na.rm = TRUE),
+    prev_refused_rate        = mean(NAME_CONTRACT_STATUS == "Refused",  na.rm = TRUE),
+    prev_interest_sum        = sum(INTEREST, na.rm = TRUE),
+    prev_interest_mean       = mean(INTEREST, na.rm = TRUE),
+    prev_rate_mean_all       = mean(INTEREST_RATE, na.rm = TRUE),
+    prev_rate_med_all        = median(INTEREST_RATE, na.rm = TRUE),
+    prev_share_mean_all      = mean(INTEREST_SHARE, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+
+prev_last1 <- prev_en |>
+  arrange(SK_ID_CURR, dplyr::desc(.data[["DAYS_DECISION"]])) |>
+  group_by(SK_ID_CURR) |>
+  slice_head(n = 1) |>
+  summarise(
+    prev_last1_amt_credit     = first(AMT_CREDIT),
+    prev_last1_cnt_payment    = first(CNT_PAYMENT),
+    prev_last1_app_to_credit  = first(app_to_credit),
+    prev_last1_ann_to_credit  = first(ann_to_credit),
+    prev_last1_status         = first(NAME_CONTRACT_STATUS),
+    .groups = "drop"
+  )
+
+prev_last3 <- prev_en |>
+  arrange(SK_ID_CURR, dplyr::desc(.data[["DAYS_DECISION"]])) |>
+  group_by(SK_ID_CURR) |>
+  slice_head(n = 3) |>
+  summarise(
+    prev_last3_n                  = n(),
+    prev_last3_amt_credit_mean    = mean(AMT_CREDIT,    na.rm = TRUE),
+    prev_last3_cnt_payment_mean   = mean(CNT_PAYMENT,   na.rm = TRUE),
+    prev_last3_app_to_credit_mean = mean(app_to_credit, na.rm = TRUE),
+    prev_last3_ann_to_credit_mean = mean(ann_to_credit, na.rm = TRUE),
+    prev_last3_approved_rate      = mean(NAME_CONTRACT_STATUS == "Approved", na.rm = TRUE),
+    .groups = "drop"
+  )
+
+
+prev_last5 <- prev_en |>
+  arrange(SK_ID_CURR, dplyr::desc(.data[["DAYS_DECISION"]])) |>
+  group_by(SK_ID_CURR) |>
+  slice_head(n = 5) |>
+  summarise(
+    prev_last5_n                  = n(),
+    prev_last5_amt_credit_mean    = mean(AMT_CREDIT,    na.rm = TRUE),
+    prev_last5_cnt_payment_mean   = mean(CNT_PAYMENT,   na.rm = TRUE),
+    prev_last5_app_to_credit_mean = mean(app_to_credit, na.rm = TRUE),
+    prev_last5_ann_to_credit_mean = mean(ann_to_credit, na.rm = TRUE),
+    prev_last5_approved_rate      = mean(NAME_CONTRACT_STATUS == "Approved", na.rm = TRUE),
+    .groups = "drop"
+  )
+
+prev_first2 <- prev_en |>
+  arrange(SK_ID_CURR, .data[["DAYS_DECISION"]]) |>
+  group_by(SK_ID_CURR) |>
+  slice_head(n = 2) |>
+  summarise(
+    prev_first2_n                  = n(),
+    prev_first2_amt_credit_mean    = mean(AMT_CREDIT,    na.rm = TRUE),
+    prev_first2_cnt_payment_mean   = mean(CNT_PAYMENT,   na.rm = TRUE),
+    prev_first2_app_to_credit_mean = mean(app_to_credit, na.rm = TRUE),
+    prev_first2_ann_to_credit_mean = mean(ann_to_credit, na.rm = TRUE),
+    prev_first2_approved_rate      = mean(NAME_CONTRACT_STATUS == "Approved", na.rm = TRUE),
+    .groups = "drop"
+  )
+
+
+prev_first4 <- prev_en |>
+  arrange(SK_ID_CURR, .data[["DAYS_DECISION"]]) |>
+  group_by(SK_ID_CURR) |>
+  slice_head(n = 4) |>
+  summarise(
+    prev_first4_n                  = n(),
+    prev_first4_amt_credit_mean    = mean(AMT_CREDIT,    na.rm = TRUE),
+    prev_first4_cnt_payment_mean   = mean(CNT_PAYMENT,   na.rm = TRUE),
+    prev_first4_app_to_credit_mean = mean(app_to_credit, na.rm = TRUE),
+    prev_first4_ann_to_credit_mean = mean(ann_to_credit, na.rm = TRUE),
+    prev_first4_approved_rate      = mean(NAME_CONTRACT_STATUS == "Approved", na.rm = TRUE),
+    .groups = "drop"
+  )
+
+
+prev_features <- Reduce(function(x, y) left_join(x, y, by = "SK_ID_CURR"),
+                        list(prev_all, prev_last1, prev_last3, prev_last5, prev_first2, prev_first4))
+
+application_train_FE <- clean_application_train |> left_join(prev_features, by = "SK_ID_CURR")
+
 
 
 ```
