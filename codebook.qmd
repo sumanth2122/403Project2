@@ -64,12 +64,203 @@ glimpse(application_test)
 ## Data Engineering
 
 ```{r}
+<<<<<<< HEAD
+=======
+library(corrplot)
+library(Hmisc)
+
+clean_application_train <- application_train|>
+  mutate(REGION_RATING = ((REGION_RATING_CLIENT+REGION_RATING_CLIENT_W_CITY)/2))|>
+  select(c(SK_ID_CURR, TARGET, NAME_CONTRACT_TYPE, CODE_GENDER, FLAG_OWN_CAR, FLAG_OWN_REALTY, CNT_CHILDREN, AMT_INCOME_TOTAL, AMT_CREDIT, AMT_ANNUITY, AMT_GOODS_PRICE, NAME_INCOME_TYPE, NAME_EDUCATION_TYPE, NAME_FAMILY_STATUS, NAME_HOUSING_TYPE, REGION_POPULATION_RELATIVE, DAYS_BIRTH, DAYS_EMPLOYED, DAYS_REGISTRATION, DAYS_ID_PUBLISH,, FLAG_MOBIL, FLAG_EMP_PHONE, FLAG_WORK_PHONE, FLAG_CONT_MOBILE, FLAG_PHONE, FLAG_EMAIL, CNT_FAM_MEMBERS, REGION_RATING_CLIENT, REGION_RATING_CLIENT_W_CITY, REG_REGION_NOT_LIVE_REGION, REG_REGION_NOT_WORK_REGION, LIVE_REGION_NOT_WORK_REGION, REG_CITY_NOT_LIVE_CITY, REG_CITY_NOT_WORK_CITY, LIVE_CITY_NOT_WORK_CITY, EXT_SOURCE_1, EXT_SOURCE_2, EXT_SOURCE_3 ,OBS_30_CNT_SOCIAL_CIRCLE, DEF_30_CNT_SOCIAL_CIRCLE, OBS_60_CNT_SOCIAL_CIRCLE, DEF_60_CNT_SOCIAL_CIRCLE, DAYS_LAST_PHONE_CHANGE, FLAG_DOCUMENT_2, FLAG_DOCUMENT_3, FLAG_DOCUMENT_4, FLAG_DOCUMENT_5, FLAG_DOCUMENT_6, FLAG_DOCUMENT_7, FLAG_DOCUMENT_8, FLAG_DOCUMENT_9, FLAG_DOCUMENT_10, FLAG_DOCUMENT_11, FLAG_DOCUMENT_12,FLAG_DOCUMENT_13, FLAG_DOCUMENT_14, FLAG_DOCUMENT_15, FLAG_DOCUMENT_16, FLAG_DOCUMENT_17, FLAG_DOCUMENT_18, FLAG_DOCUMENT_19, FLAG_DOCUMENT_20, FLAG_DOCUMENT_21))|>
+  select(-c(REGION_RATING_CLIENT, REGION_RATING_CLIENT_W_CITY))
+
+
+app_train <- clean_application_train|>
+  select_if(is.numeric)|>
+  select(-TARGET)
+
+
+cor_mat <- cor(app_train)
+cor_mat[!lower.tri(cor_mat)]
+data.frame(cor_mat) |>
+              rownames_to_column() |>
+              gather(key="variable", value="correlation", -rowname) |>
+              filter(abs(correlation) > 0.5)|>
+              filter(abs(correlation) != 1.0)
+
+
+```
+
+```{r}
+prev_en <- prevapp |>
+  mutate(
+    app_to_credit = AMT_APPLICATION / AMT_CREDIT,
+    ann_to_credit = AMT_ANNUITY     / AMT_CREDIT,
+    valid = NAME_CONTRACT_STATUS == "Approved" &
+            AMT_CREDIT  > 0 &
+            AMT_ANNUITY > 0 &
+            CNT_PAYMENT > 0,
+    INTEREST       = ifelse(valid, CNT_PAYMENT * AMT_ANNUITY - AMT_CREDIT, NA_real_),
+    INTEREST_RATE  = ifelse(valid, 24 * INTEREST/(AMT_CREDIT * (CNT_PAYMENT + 1)), NA_real_),
+    INTEREST_SHARE = ifelse(AMT_CREDIT > 0, INTEREST / AMT_CREDIT, NA_real_)
+  )
+
+prev_all <- prev_en |>
+  group_by(SK_ID_CURR) |>
+  summarise(
+    prev_app_count           = n(),
+    prev_amt_credit_mean     = mean(AMT_CREDIT, na.rm = TRUE),
+    prev_cnt_payment_mean    = mean(CNT_PAYMENT, na.rm = TRUE),
+    prev_app_to_credit_mean  = mean(app_to_credit, na.rm = TRUE),
+    prev_ann_to_credit_mean  = mean(ann_to_credit, na.rm = TRUE),
+    prev_approved_rate       = mean(NAME_CONTRACT_STATUS == "Approved", na.rm = TRUE),
+    prev_refused_rate        = mean(NAME_CONTRACT_STATUS == "Refused",  na.rm = TRUE),
+    prev_interest_sum        = sum(INTEREST, na.rm = TRUE),
+    prev_interest_mean       = mean(INTEREST, na.rm = TRUE),
+    prev_rate_mean_all       = mean(INTEREST_RATE, na.rm = TRUE),
+    prev_rate_med_all        = median(INTEREST_RATE, na.rm = TRUE),
+    prev_share_mean_all      = mean(INTEREST_SHARE, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+
+prev_last1 <- prev_en |>
+  arrange(SK_ID_CURR, dplyr::desc(.data[["DAYS_DECISION"]])) |>
+  group_by(SK_ID_CURR) |>
+  slice_head(n = 1) |>
+  summarise(
+    prev_last1_amt_credit     = first(AMT_CREDIT),
+    prev_last1_cnt_payment    = first(CNT_PAYMENT),
+    prev_last1_app_to_credit  = first(app_to_credit),
+    prev_last1_ann_to_credit  = first(ann_to_credit),
+    prev_last1_status         = first(NAME_CONTRACT_STATUS),
+    .groups = "drop"
+  )
+
+prev_last3 <- prev_en |>
+  arrange(SK_ID_CURR, dplyr::desc(.data[["DAYS_DECISION"]])) |>
+  group_by(SK_ID_CURR) |>
+  slice_head(n = 3) |>
+  summarise(
+    prev_last3_n                  = n(),
+    prev_last3_amt_credit_mean    = mean(AMT_CREDIT,    na.rm = TRUE),
+    prev_last3_cnt_payment_mean   = mean(CNT_PAYMENT,   na.rm = TRUE),
+    prev_last3_app_to_credit_mean = mean(app_to_credit, na.rm = TRUE),
+    prev_last3_ann_to_credit_mean = mean(ann_to_credit, na.rm = TRUE),
+    prev_last3_approved_rate      = mean(NAME_CONTRACT_STATUS == "Approved", na.rm = TRUE),
+    .groups = "drop"
+  )
+
+
+prev_last5 <- prev_en |>
+  arrange(SK_ID_CURR, dplyr::desc(.data[["DAYS_DECISION"]])) |>
+  group_by(SK_ID_CURR) |>
+  slice_head(n = 5) |>
+  summarise(
+    prev_last5_n                  = n(),
+    prev_last5_amt_credit_mean    = mean(AMT_CREDIT,    na.rm = TRUE),
+    prev_last5_cnt_payment_mean   = mean(CNT_PAYMENT,   na.rm = TRUE),
+    prev_last5_app_to_credit_mean = mean(app_to_credit, na.rm = TRUE),
+    prev_last5_ann_to_credit_mean = mean(ann_to_credit, na.rm = TRUE),
+    prev_last5_approved_rate      = mean(NAME_CONTRACT_STATUS == "Approved", na.rm = TRUE),
+    .groups = "drop"
+  )
+
+prev_first2 <- prev_en |>
+  arrange(SK_ID_CURR, .data[["DAYS_DECISION"]]) |>
+  group_by(SK_ID_CURR) |>
+  slice_head(n = 2) |>
+  summarise(
+    prev_first2_n                  = n(),
+    prev_first2_amt_credit_mean    = mean(AMT_CREDIT,    na.rm = TRUE),
+    prev_first2_cnt_payment_mean   = mean(CNT_PAYMENT,   na.rm = TRUE),
+    prev_first2_app_to_credit_mean = mean(app_to_credit, na.rm = TRUE),
+    prev_first2_ann_to_credit_mean = mean(ann_to_credit, na.rm = TRUE),
+    prev_first2_approved_rate      = mean(NAME_CONTRACT_STATUS == "Approved", na.rm = TRUE),
+    .groups = "drop"
+  )
+
+
+prev_first4 <- prev_en |>
+  arrange(SK_ID_CURR, .data[["DAYS_DECISION"]]) |>
+  group_by(SK_ID_CURR) |>
+  slice_head(n = 4) |>
+  summarise(
+    prev_first4_n                  = n(),
+    prev_first4_amt_credit_mean    = mean(AMT_CREDIT,    na.rm = TRUE),
+    prev_first4_cnt_payment_mean   = mean(CNT_PAYMENT,   na.rm = TRUE),
+    prev_first4_app_to_credit_mean = mean(app_to_credit, na.rm = TRUE),
+    prev_first4_ann_to_credit_mean = mean(ann_to_credit, na.rm = TRUE),
+    prev_first4_approved_rate      = mean(NAME_CONTRACT_STATUS == "Approved", na.rm = TRUE),
+    .groups = "drop"
+  )
+
+
+prev_features <- Reduce(function(x, y) left_join(x, y, by = "SK_ID_CURR"),
+                        list(prev_all, prev_last1, prev_last3, prev_last5, prev_first2, prev_first4))
+
+application_train_FE <- clean_application_train |> left_join(prev_features, by = "SK_ID_CURR")
+>>>>>>> 6b4c89523ff8857d708004d741ad590c195914f0
 
 ```
 
 ## Metric Custom Functions
 
 ### ROC-AUC, Accuracy, F-1, Specificity
+<<<<<<< HEAD
+=======
+```{r}
+accuracy <- function(y_hat, y){
+    correct <- sum(y_hat == y)
+    total <- length(y)
+    return(correct / total)
+}
+
+precision <- function(y_hat, y){
+    tp <- sum ((y_hat == 1) && (y ==1))
+    fp <- sum ((y_hat == 1) && (y == 0))
+    precision <- tp / (tp+fp)
+    return(precision)
+}
+
+recall <- function(y_hat, y){
+    tp <- sum ((y_hat == 1) && (y ==1))
+    fn <- sum ((y_hat == 0) && (y == 1))
+    recall <- tp / (tp+fn)
+    return(recall)
+}
+
+f1 <- function(y_hat, y){
+    precision <- precision(y_hat, y)
+    recall <- recall(y_hat, y)
+    return (2 * (precision * recall) / (precision + recall))
+}
+
+specificity <- function(y_hat, y){
+    fp <- sum ((y_hat == 1) && (y == 0))
+    tn <- sum ((y_hat == 0) && (y == 0))
+    return (tn/(tn+fp))
+}
+
+roc_auc <- function(y, y_hat){
+    thresholds <- seq(0, 1, by = 0.01)
+    tpr <- c()
+    fpr <- c()
+    for (t in thresholds){
+        tp <- sum((y_hat >= t) && (y == 1))
+        fn <- sum((y_hat < t) && (y == 1))
+        fp <- sum((y_hat >= t) && (y == 0))
+        tn <- sum((y_hat < t) && (y == 0))
+        tpr <- c(tpr, tp / (tp + fn))
+        fpr <- c(fpr, fp / (fp + tn))
+    }
+    auc <- 0
+    for (i in 2:length(tpr)){
+        auc <- auc + (fpr[i] - fpr[i-1]) * (tpr[i] + tpr[i-1]) / 2
+    }
+    return(auc)
+}
+>>>>>>> 6b4c89523ff8857d708004d741ad590c195914f0
 
 ```{r}
 accuracy <- function(y_hat, y){
@@ -156,10 +347,46 @@ cross_val <- function(model, data, k =5){
 }
 ```
 
+### Cross Validation Function
+```{r}
+cross_val <- function(model, data, k =5){
+    set.seed(23)
+    folds <- sample((rep(1:k, length.out = nrow(data))))
+    metrics <- data.frame(Accuracy = numeric(k),
+                          F1 = numeric(k),
+                          Specificity = numeric(k),
+                          ROC_AUC = numeric(k))
+    for (i in 1:k){
+        train_fold = data[folds != i, ]
+        val_fold = data[folds == i,]
+
+        model_fit(model, data = train_fold)
+        preds <- predict(model, val_fold, type = "prob")
+        y_hat <- ifelse(preds$.pred_1 >= 0.5, 1, 0)
+        y <- val_fold$TARGET
+        metrics$Accuracy[i] <- accuracy(y_hat, y)
+        metrics$F1[i] <- f1(y_hat, y)
+        metrics$Specificity[i] <- specificity(y_hat, y)
+        metrics$ROC_AUC[i] <- roc_auc(y, preds$.pred_1)
+        metrics$Accuracy[k+1] <- mean(metrics$Accuracy)
+        metrics$F1[k+1] <- mean(metrics$F1)
+        metrics$Specificity[k+1] <- mean(metrics$Specificity)
+        metrics$ROC_AUC[k+1] <- mean(metrics$ROC_AUC)
+    }
+    return(metrics)
+}
+```
+
+
+
 ## Models
 
+<<<<<<< HEAD
 ### Linear (Taras Part)
 
+=======
+### Logistic Regression
+>>>>>>> 6b4c89523ff8857d708004d741ad590c195914f0
 ```{r}
 #concatanate string for logistic regression here
 #WORKS
@@ -169,6 +396,8 @@ generateModelFormula <- function(yResponse,xPredictors)
   return(formula)
 }
 
+
+#priority: run a logistic regression model 
 
 ```
 
