@@ -25,18 +25,15 @@ sample_sub <- read_csv(here::here("data/sample_submission.csv"))
 ```{r}
 install.packages("LiblineaR")
 ```
+
 ```{r}
 install.packages("discrim")
 library(discrim)
 ```
 
-
 ```{r}
 library(MASS)
 ```
-
-
-
 
 ## Reading in the Data
 
@@ -51,6 +48,7 @@ ran_val_data <- application_train[-train_indices, ]
 ```
 
 ### Stratified Split
+
 ```{r}
 split_strat <- initial_split(application_train, prop = 0.8, strata = "TARGET")
 strat_train_data <- training(split_strat)
@@ -72,6 +70,7 @@ glimpse(application_test)
 ## Metric Custom Functions
 
 ### ROC-AUC, Accuracy, F-1, Specificity
+
 ```{r}
 accuracy <- function(y_hat, y){
     correct <- sum(y_hat == y)
@@ -157,10 +156,10 @@ cross_val <- function(model, data, k =5){
 }
 ```
 
-
-
 ## Models
+
 ### Linear (Taras Part)
+
 ```{r}
 #concatanate string for logistic regression here
 #WORKS
@@ -173,38 +172,24 @@ generateModelFormula <- function(yResponse,xPredictors)
 
 ```
 
-
-
 ```{r}
 yResponse="TARGET"
 xPredictors=c("AMT_INCOME_TOTAL","AMT_CREDIT","AMT_ANNUITY","AMT_GOODS_PRICE")
 generateModelFormula(yPredictor,xPredictors)
 ```
 
-
-
 ```{r}
 #we must factor the target variable in order to get the classification to work!!
 strat_train_data$TARGET <- as.factor(strat_train_data$TARGET)
 ```
 
-
-
 ```{r}
 ran_train_data$TARGET <- as.factor(ran_train_data$TARGET)
 ```
 
-
-
-
 ```{r}
 ran_val_data$TARGET <- as.factor(ran_val_data$TARGET)
 ```
-
-
-
-
-
 
 ```{r}
 #logistic regression model function here: we would pass in the training data sets for the data frame (strat_train_data, ran_train_data)!! 
@@ -253,13 +238,11 @@ logistic_regression_model_fit(strat_train_data,yResponse,xPredictors)
 
 ```
 
-
 ```{r}
 #run logistic_regression_model_fit on ran_train_data
 yResponse="TARGET"
 logistic_regression_model_fit(ran_train_data,yResponse,xPredictors)
 ```
-
 
 ```{r}
 #run logistic_regression_model_fit on validation train dataset
@@ -267,10 +250,6 @@ logistic_regression_model_fit(ran_train_data,yResponse,xPredictors)
 yResponse="TARGET"
 logistic_regression_model_fit(ran_val_data,yResponse,xPredictors)
 ```
-
-
-
-
 
 ```{r}
 #support vector machine classification model here
@@ -294,7 +273,6 @@ SVMClassification <- function(trainData,yReponse,xPredictors,costVal,marginVal)
 }
 ```
 
-
 ```{r}
 #run SVMClassification on strat_train_data
 costVal=0.1
@@ -303,15 +281,12 @@ SVMClassification(strat_train_data,yResponse,xPredictors,costVal,marginVal)
 
 ```
 
-
-
 ```{r}
 #run SVMClassification on ran_train_data
 costVal=0.1
 marginVal=1
 SVMClassification(ran_train_data,yResponse,xPredictors,costVal,marginVal)
 ```
-
 
 ```{r}
 #run SVMClassification on validation train dataset 
@@ -321,8 +296,6 @@ marginVal=1
 SVMClassification(ran_val_data,yResponse,xPredictors,costVal,marginVal)
 
 ```
-
-
 
 ```{r}
 #RUN THIS ONE NEXT!! 
@@ -358,20 +331,14 @@ LDA_model_fit <- function(trainData,yResponse,xPredictors)
 LDA_model_fit(strat_train_data,yResponse,xPredictors)
 ```
 
-
-
-
 ```{r}
 #run LDA on ran_train_data
 LDA_model_fit(ran_train_data,yResponse,xPredictors)
 
 ```
 
-
-
 ```{r}
 #running data on validation training data 
 #run LDA on ran_val_data
 LDA_model_fit(ran_val_data,yResponse,xPredictors)
 ```
-
