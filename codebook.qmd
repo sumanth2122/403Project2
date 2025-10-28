@@ -11,6 +11,8 @@ jupyter: python3
 library(tidyverse)
 library(readr) 
 library(tidymodels)
+library(corrplot)
+library(Hmisc)
 library(discrim)
 library(MASS)
 library(corrplot)
@@ -52,19 +54,31 @@ strat_val_data <- testing(split_strat)
 
 ### Non Random Split - Represent Test Data
 
+For this split, I am thinking we 
+
 ```{r}
-glimpse(application_test)
+
 ```
 
 ## Data Engineering
 
+<<<<<<< Updated upstream
+=======
+These are the columns from the main table we decided to keep. Decided to keep 1 score out of 3, drop all that seemed irrelevant or repetitive, and those that had over 15000 nas. The columns kept that did have NA's were external source 2, which had roughly 600 NA's, which we we dropped due to the small number compared to the full data. Also feature engineering of the Region Rating using the two we deemed most important. Moving forward, should we keep the document flags?
+
+
 ```{r}
 clean_application_train <- application_train|>
   mutate(REGION_RATING = ((REGION_RATING_CLIENT+REGION_RATING_CLIENT_W_CITY)/2))|>
-  select(c(SK_ID_CURR, TARGET, NAME_CONTRACT_TYPE, CODE_GENDER, FLAG_OWN_CAR, FLAG_OWN_REALTY, CNT_CHILDREN, AMT_INCOME_TOTAL, AMT_CREDIT, AMT_ANNUITY, AMT_GOODS_PRICE, NAME_INCOME_TYPE, NAME_EDUCATION_TYPE, NAME_FAMILY_STATUS, NAME_HOUSING_TYPE, REGION_POPULATION_RELATIVE, DAYS_BIRTH, DAYS_EMPLOYED, DAYS_REGISTRATION, DAYS_ID_PUBLISH,, FLAG_MOBIL, FLAG_EMP_PHONE, FLAG_WORK_PHONE, FLAG_CONT_MOBILE, FLAG_PHONE, FLAG_EMAIL, CNT_FAM_MEMBERS, REGION_RATING_CLIENT, REGION_RATING_CLIENT_W_CITY, REG_REGION_NOT_LIVE_REGION, REG_REGION_NOT_WORK_REGION, LIVE_REGION_NOT_WORK_REGION, REG_CITY_NOT_LIVE_CITY, REG_CITY_NOT_WORK_CITY, LIVE_CITY_NOT_WORK_CITY, EXT_SOURCE_1, EXT_SOURCE_2, EXT_SOURCE_3 ,OBS_30_CNT_SOCIAL_CIRCLE, DEF_30_CNT_SOCIAL_CIRCLE, OBS_60_CNT_SOCIAL_CIRCLE, DEF_60_CNT_SOCIAL_CIRCLE, DAYS_LAST_PHONE_CHANGE, FLAG_DOCUMENT_2, FLAG_DOCUMENT_3, FLAG_DOCUMENT_4, FLAG_DOCUMENT_5, FLAG_DOCUMENT_6, FLAG_DOCUMENT_7, FLAG_DOCUMENT_8, FLAG_DOCUMENT_9, FLAG_DOCUMENT_10, FLAG_DOCUMENT_11, FLAG_DOCUMENT_12,FLAG_DOCUMENT_13, FLAG_DOCUMENT_14, FLAG_DOCUMENT_15, FLAG_DOCUMENT_16, FLAG_DOCUMENT_17, FLAG_DOCUMENT_18, FLAG_DOCUMENT_19, FLAG_DOCUMENT_20, FLAG_DOCUMENT_21))|>
-  select(-c(REGION_RATING_CLIENT, REGION_RATING_CLIENT_W_CITY))
+  select(c(SK_ID_CURR, TARGET, NAME_CONTRACT_TYPE, CODE_GENDER, FLAG_OWN_CAR, FLAG_OWN_REALTY, CNT_CHILDREN, AMT_INCOME_TOTAL, AMT_CREDIT, AMT_ANNUITY, NAME_INCOME_TYPE, NAME_EDUCATION_TYPE, NAME_FAMILY_STATUS, NAME_HOUSING_TYPE, REGION_POPULATION_RELATIVE, DAYS_BIRTH, DAYS_EMPLOYED, DAYS_REGISTRATION, DAYS_ID_PUBLISH,, FLAG_MOBIL, FLAG_EMP_PHONE, FLAG_WORK_PHONE, FLAG_CONT_MOBILE, FLAG_PHONE, FLAG_EMAIL, CNT_FAM_MEMBERS, REGION_RATING_CLIENT, REGION_RATING_CLIENT_W_CITY, LIVE_CITY_NOT_WORK_CITY, EXT_SOURCE_2, DAYS_LAST_PHONE_CHANGE, FLAG_DOCUMENT_2, FLAG_DOCUMENT_3, FLAG_DOCUMENT_4, FLAG_DOCUMENT_5, FLAG_DOCUMENT_6, FLAG_DOCUMENT_7, FLAG_DOCUMENT_8, FLAG_DOCUMENT_9, FLAG_DOCUMENT_10, FLAG_DOCUMENT_11, FLAG_DOCUMENT_12,FLAG_DOCUMENT_13, FLAG_DOCUMENT_14, FLAG_DOCUMENT_15, FLAG_DOCUMENT_16, FLAG_DOCUMENT_17, FLAG_DOCUMENT_18, FLAG_DOCUMENT_19, FLAG_DOCUMENT_20, FLAG_DOCUMENT_21, REGION_RATING)) |>
+  select(-c(REGION_RATING_CLIENT, REGION_RATING_CLIENT_W_CITY)) |>
+  drop_na()
 
+colSums(is.na(clean_application_train))
 
+```
+
+```{r}
 app_train <- clean_application_train|>
   select_if(is.numeric)|>
   select(-TARGET)
@@ -81,6 +95,7 @@ data.frame(cor_mat) |>
 
 ```
 
+Justin's code for the previous applications table.
 ```{r}
 prev_en <- prevapp |>
   mutate(
@@ -190,8 +205,45 @@ prev_features <- Reduce(function(x, y) left_join(x, y, by = "SK_ID_CURR"),
                         list(prev_all, prev_last1, prev_last3, prev_last5, prev_first2, prev_first4))
 
 application_train_FE <- clean_application_train |> left_join(prev_features, by = "SK_ID_CURR")
-
 ```
+
+This still yields a lot of NA's in the final table, so we need to decide how to handle those.
+```{r}
+colSums(is.na(application_train_FE))
+```
+
+Due to aggregation, we now have one row per person. 
+
+Sumanth's code for including bureau information.
+Aggregating all of the credit debt information, and creating a debt ratio column. Capping the values at 5 to avoid extreme outliers. 0's if no info for NA's is valid in this case because it means they don't have credit history.
+```{r}
+clean_bureau <- bureau |>
+  select(SK_ID_CURR, AMT_CREDIT_SUM, AMT_CREDIT_SUM_DEBT) |>
+  group_by(SK_ID_CURR) |>
+  summarise(
+    total_credit_sum = sum(AMT_CREDIT_SUM, na.rm = TRUE),
+    total_debt_sum = sum(AMT_CREDIT_SUM_DEBT, na.rm = TRUE),
+    debt_ratio = ifelse(total_credit_sum > 0, total_debt_sum / total_credit_sum, NA_real_),
+    .groups = "drop"
+  ) |>
+  mutate(debt_ratio = ifelse(is.na(debt_ratio), 0, pmin(debt_ratio, 5)))
+
+colSums(is.na(clean_bureau))
+```
+
+```{r}
+application_train_FE <- application_train_FE |>
+  left_join(clean_bureau |> select(SK_ID_CURR, debt_ratio), by = "SK_ID_CURR") |>
+  mutate(debt_ratio = ifelse(is.na(debt_ratio), 0, debt_ratio))
+
+application_train_FE
+```
+
+
+```{r}
+colSums(is.na(application_train_FE))
+```
+
 
 ## Metric Custom Functions
 
@@ -252,6 +304,7 @@ roc_auc <- function(y, y_hat){
 
 ### Cross Validation Function
 
+<<<<<<< Updated upstream
 ```{r}
 cross_val <- function(model, data, k =5){
     set.seed(23)
