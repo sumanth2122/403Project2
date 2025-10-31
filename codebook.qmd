@@ -8,13 +8,13 @@ jupyter: python3
 ## Imports
 
 ```{r}
+library(Hmisc)
 library(tidyverse)
 library(readr) 
 library(tidymodels)
 library(corrplot)
 library(discrim)
 library(corrplot)
-library(Hmisc)
 ```
 
 ## Reading in the Data
@@ -30,38 +30,8 @@ prevapp <- read_csv(here::here("data/previous_application.csv"))
 sample_sub <- read_csv(here::here("data/sample_submission.csv"))
 ```
 
-## Data Splitting
-
-### Random Split of Data
-
-```{r}
-set.seed(123)
-train_size <- floor(0.80 * nrow(application_train))
-train_indices <- sample(seq_len(nrow(application_train)), size = train_size)
-ran_train_data <- application_train[train_indices, ]
-ran_val_data <- application_train[-train_indices, ]
-```
-
-### Stratified Split
-
-```{r}
-split_strat <- initial_split(application_train, prop = 0.8, strata = "TARGET")
-strat_train_data <- training(split_strat)
-strat_val_data <- testing(split_strat)
-```
-
-### Non Random Split - Represent Test Data
-
-For this split, I am thinking we 
-
-```{r}
-
-```
 
 ## Data Engineering
-
-<<<<<<< Updated upstream
-=======
 These are the columns from the main table we decided to keep. Decided to keep 1 score out of 3, drop all that seemed irrelevant or repetitive, and those that had over 15000 nas. The columns kept that did have NA's were external source 2, which had roughly 600 NA's, which we we dropped due to the small number compared to the full data. Also feature engineering of the Region Rating using the two we deemed most important. Moving forward, should we keep the document flags?
 
 
@@ -156,10 +126,6 @@ prev_last5 <- prev_en |>
     .groups = "drop"
   )
 
-
-
-
-
 prev_features <- Reduce(function(x, y) left_join(x, y, by = "SK_ID_CURR"),
                         list(prev_all, prev_last3, prev_last5))
 
@@ -167,6 +133,7 @@ application_train_FE <- clean_application_train |> left_join(prev_features, by =
 ```
 
 This still yields a lot of NA's in the final table, so we need to decide how to handle those.
+
 ```{r}
 colSums(is.na(application_train_FE))
 ```
@@ -199,20 +166,10 @@ application_train_FE
 ```
 
 
-
-
-
-
-
 ```{r}
-
-
-
 application_train_FE_new <- application_train_FE|>
   filter(SK_ID_CURR!= 333092)|>
   select(-prev_app_to_credit_mean)
-
-
 
 application_train_FE_rec <- recipe(TARGET ~ ., data = application_train_FE_new)|>
    update_role(SK_ID_CURR, new_role = "id") |>
@@ -391,6 +348,7 @@ formula <- generateModelFormula(yResponse,xPredictors)
 strat_model_lr <- cross_val(logistic_regression_model, formula, strat_train_data)
 strat_model_lr
 ran_model_lr <- cross_val(logistic_regression_model, formula, ran_train_data)
+ran_model_lr
 ```
 
 ### Support Vector Machine Classification Model
@@ -413,6 +371,7 @@ marginVal=1
 strat_model_svc <- cross_val(SVC_Model, formula, strat_train_data, costVal=costVal, marginVal=marginVal)
 strat_model_svc
 ran_model_svc <- cross_val(SVC_Model, formula, ran_train_data, costVal=costVal, marginVal=marginVal)
+ran_model_svc
 ```
 
 
@@ -436,4 +395,5 @@ LDA_model <- function(trainData, valData, formula){
 strat_model_lda <- cross_val(LDA_model, formula, strat_train_data)
 strat_model_lda
 ran_model_lda <- cross_val(LDA_model, formula, ran_train_data)
+ran_model_lda
 ```
