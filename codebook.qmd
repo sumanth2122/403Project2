@@ -30,8 +30,38 @@ prevapp <- read_csv(here::here("data/previous_application.csv"))
 sample_sub <- read_csv(here::here("data/sample_submission.csv"))
 ```
 
-## Data
-### Data Engineering
+## Data Splitting
+
+### Random Split of Data
+
+```{r}
+set.seed(123)
+train_size <- floor(0.80 * nrow(application_train))
+train_indices <- sample(seq_len(nrow(application_train)), size = train_size)
+ran_train_data <- application_train[train_indices, ]
+ran_val_data <- application_train[-train_indices, ]
+```
+
+### Stratified Split
+
+```{r}
+split_strat <- initial_split(application_train, prop = 0.8, strata = "TARGET")
+strat_train_data <- training(split_strat)
+strat_val_data <- testing(split_strat)
+```
+
+### Non Random Split - Represent Test Data
+
+For this split, I am thinking we 
+
+```{r}
+
+```
+
+## Data Engineering
+
+<<<<<<< Updated upstream
+=======
 These are the columns from the main table we decided to keep. Decided to keep 1 score out of 3, drop all that seemed irrelevant or repetitive, and those that had over 15000 nas. The columns kept that did have NA's were external source 2, which had roughly 600 NA's, which we we dropped due to the small number compared to the full data. Also feature engineering of the Region Rating using the two we deemed most important. Moving forward, should we keep the document flags?
 
 
@@ -126,7 +156,7 @@ prev_last5 <- prev_en |>
     .groups = "drop"
   )
 
-p
+
 
 
 
@@ -172,43 +202,25 @@ application_train_FE
 
 
 
-```{r}
-application_train_FE<- fastDummies::dummy_cols(application_train_FE, remove_selected_columns = TRUE)
-```
-
-### Data Splitting
-
-### Random Split of Data
-
-```{r}
-set.seed(123)
-train_size <- floor(0.80 * nrow(application_train))
-train_indices <- sample(seq_len(nrow(application_train)), size = train_size)
-ran_train_data <- application_train[train_indices, ]
-ran_val_data <- application_train[-train_indices, ]
-```
-
-### Stratified Split
-
-```{r}
-split_strat <- initial_split(application_train, prop = 0.8, strata = "TARGET")
-strat_train_data <- training(split_strat)
-strat_val_data <- testing(split_strat)
-```
-
-### Non Random Split - Represent Test Data
-
-For this split, I am thinking we 
-
-```{r}
-
-```
 
 
 ```{r}
 
 
+application_train_FE_rec <- recipe(TARGET ~ ., data = application_train_FE)|>
+   update_role(SK_ID_CURR, new_role = "id") |>
+    step_impute_mean(all_numeric_predictors())|>
+   step_dummy(all_nominal_predictors(), one_hot = TRUE, role = "indicator") |>
+  step_normalize(all_numeric_predictors(), -has_role("id"),  -has_role("indicator"), na_rm = TRUE) |> 
+  prep()
+
+application_train_FE_baked <- juice(application_train_FE_rec)
+  
+
+
 ```
+
+
 
 
 
@@ -307,97 +319,192 @@ cross_val <- function(model, data, k =5){
 ### Logistic Regression
 
 ```{r}
-library(MASS)
-generateModelFormula <- function(yResponse,xPredictors){
+library(MASS) #leave this here so it doesn't mess with dplyr imports
+#concatanate string for logistic regression here
+#WORKS
+generateModelFormula <- function(yResponse,xPredictors)
+{
   formula <- as.formula(paste(yResponse,"~",paste(xPredictors,collapse="+")))
   return(formula)
 }
+
+
+#priority: run a logistic regression model 
+
 ```
 
 ```{r}
 yResponse="TARGET"
 xPredictors=c("AMT_INCOME_TOTAL","AMT_CREDIT","AMT_ANNUITY","AMT_GOODS_PRICE")
-generateModelFormula(yResponse,xPredictors)
+generateModelFormula(yPredictor,xPredictors)
 ```
 
 ```{r}
+#we must factor the target variable in order to get the classification to work!!
 strat_train_data$TARGET <- as.factor(strat_train_data$TARGET)
+```
+
+```{r}
 ran_train_data$TARGET <- as.factor(ran_train_data$TARGET)
+```
+
+```{r}
 ran_val_data$TARGET <- as.factor(ran_val_data$TARGET)
 ```
 
 ```{r}
-#logistic regression model function
-logistic_regression_model_fit <- function(trainDataFrame,valData, yResponse, xPredictors){
-  trainDataFrame[[yResponse]] <- as.factor(trainDataFrame[[yResponse]])
+#logistic regression model function here: we would pass in the training data sets for the data frame (strat_train_data, ran_train_data)!! 
+#generates predictions from the training data sets! 
+
+
+
+#add in testDataFrame once i obtain it!! 
+#testDataFrame
+
+logistic_regression_model_fit <- function(trainDataFrame,yResponse,xPredictors)
+{
+  #yResponse needs to be converted to a factor!! 
+  #trainDataFrame$yResponse <- as.factor(trainDataFrame$yResponse)
+  
+  #comment this out for now
   formula <- generateModelFormula(yResponse,xPredictors)
-  fitted_logistic_model <- logistic_reg() %>%  
+  fitted_logistic_model <- logistic_reg() %>% 
+    #set the engine: 
     set_engine("glm") %>% 
+    #set the mode: 
     set_mode("classification")%>%
+    #Fit the Model 
     fit(formula,data=trainDataFrame)
-  tidy(fitted_logistic_model)
-  pred_class <- predict(fitted_logistic_model,new_data=valData,type="class")
-  pred_class
-  class_prob_prediction <- predict(fitted_logistic_model,new_data=valData,type="prob")
-  class_prob_prediction
+  tidy(fitted_logistic_model) #generates a summary table with the intercepts
+  
+  #generate test prediction for model evaluation: pass in trained model object, test data set, and type of prediction which is "class" 
+  #pred_class <- predict(fitted_logistic_model,new_data=testDataFrame,type="class")
+  #printing out the test prediction 
+  #pred_class
+  
+  #generate predictions for class probabilities here: 
+  #class_prob_prediction <- predict(fitted_logistic_model,new_data=testDataFrame,type="prob")
+  
+  #printing out probability of prediction for each class
+  #class_prob_prediction
+  
 }
+
 ```
 
 ```{r}
-# run logistic regression
+#run logistic_regression_model_fit on strat_train_data
 yResponse="TARGET"
-xPredictors=c("AMT_INCOME_TOTAL","AMT_CREDIT","AMT_ANNUITY","AMT_GOODS_PRICE")
-strat_model_lr <- logistic_regression_model_fit(strat_train_data,strat_val_data,yResponse,xPredictors)
-ran_model_lr <- logistic_regression_model_fit(ran_train_data,ran_val_data,yResponse,xPredictors)
+logistic_regression_model_fit(strat_train_data,yResponse,xPredictors)
+
+```
+
+```{r}
+#run logistic_regression_model_fit on ran_train_data
+yResponse="TARGET"
+logistic_regression_model_fit(ran_train_data,yResponse,xPredictors)
+```
+
+```{r}
+#run logistic_regression_model_fit on validation train dataset
+#run logistic_regression_model_fit on ran_val_data
+yResponse="TARGET"
+logistic_regression_model_fit(ran_val_data,yResponse,xPredictors)
 ```
 
 ### Support Vector Machine Classification Model
 
 ```{r}
-#SVC Model function
-SVMClassification <- function(trainData,valData,yResponse,xPredictors,costVal,marginVal){
+#support vector machine classification model here
+#pass in testData once i have it!!
+
+SVMClassification <- function(trainData,yReponse,xPredictors,costVal,marginVal)
+{
   #costVal and marginVal is a hyperparameter here!! 
   svm_model <- svm_linear(cost=costVal,margin=marginVal) %>%
     set_mode("classification") %>% 
     set_engine("LiblineaR")
+  
+  #fit the classification model on train data!! 
   formula <- generateModelFormula(yResponse,xPredictors)
   formula
   svmModel_fit <- svm_model %>% fit(formula,data=trainData)
   svmModel_fit
-  predict(svmModel_fit,valData)
+  
+  #uses train model fit to conduct prediction of response variable with the test data: 
+  #predict(svmModel_fit,testData)
 }
 ```
 
 ```{r}
-#run SVMClassification
+#run SVMClassification on strat_train_data
 costVal=0.1
 marginVal=1
-strat_model_svc <- SVMClassification(strat_train_data,strat_val_data,yResponse,xPredictors,costVal,marginVal)
-ran_model_svc <- SVMClassification(ran_train_data,ran_val_data,yResponse,xPredictors,costVal,marginVal)
+SVMClassification(strat_train_data,yResponse,xPredictors,costVal,marginVal)
+
+```
+
+```{r}
+#run SVMClassification on ran_train_data
+costVal=0.1
+marginVal=1
+SVMClassification(ran_train_data,yResponse,xPredictors,costVal,marginVal)
+```
+
+```{r}
+#run SVMClassification on validation train dataset 
+#run SVMClassification on val_train_data
+costVal=0.1
+marginVal=1
+SVMClassification(ran_val_data,yResponse,xPredictors,costVal,marginVal)
+
 ```
 
 
 ### LDA: Linear Discriminant Analysis Model
 
 ```{r}
-#LDA: Linear Discriminant Analysis Model
-LDA_model_fit <- function(trainData,valData,yResponse,xPredictors){
+#RUN THIS ONE NEXT!! 
+
+#LDA: Linear Discriminant Analysis Model function here
+
+#dont have testData as of right now, so currently exclude 
+#testData
+LDA_model_fit <- function(trainData,yResponse,xPredictors)
+{
   discrim_model <- discrim_linear(
     mode="classification",
     penalty=NULL,
     regularization_method=NULL,
     engine="MASS"
   )
+  
   formula <- generateModelFormula(yResponse,xPredictors)
   discrim_modelFit <- discrim_model %>% fit(formula,data=trainData)
+  
   discrim_modelFit
-  predict(discrim_modelFit,valData)
+  
+  #uncomment line below once i have the testData
+  #predict(discrim_modelFit,testData)
   
 }
+
+
 ```
 
 ```{r}
-#run LDA
-strat_model_lda <- LDA_model_fit(strat_train_data, strat_val_data, yResponse, xPredictors)
-ran_model_lda <- LDA_model_fit(ran_train_data, ran_val_data, yResponse, xPredictors)
+#run LDA on strat_train_data
+LDA_model_fit(strat_train_data,yResponse,xPredictors)
+```
+
+```{r}
+#run LDA on ran_train_data
+LDA_model_fit(ran_train_data,yResponse,xPredictors)
+
+```
+
+```{r}
+#running data on validation training data 
+#run LDA on ran_val_data
+LDA_model_fit(ran_val_data,yResponse,xPredictors)
 ```
