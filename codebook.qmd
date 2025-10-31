@@ -207,11 +207,20 @@ application_train_FE
 ```{r}
 
 
-application_train_FE_rec <- recipe(TARGET ~ ., data = application_train_FE)|>
+
+application_train_FE_new <- application_train_FE|>
+  filter(SK_ID_CURR!= 333092)|>
+  select(-prev_app_to_credit_mean)
+
+
+
+application_train_FE_rec <- recipe(TARGET ~ ., data = application_train_FE_new)|>
    update_role(SK_ID_CURR, new_role = "id") |>
     step_impute_mean(all_numeric_predictors())|>
+  step_nzv(all_numeric_predictors())|>
    step_dummy(all_nominal_predictors(), one_hot = TRUE, role = "indicator") |>
   step_normalize(all_numeric_predictors(), -has_role("id"),  -has_role("indicator"), na_rm = TRUE) |> 
+  
   prep()
 
 application_train_FE_baked <- juice(application_train_FE_rec)
