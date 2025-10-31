@@ -186,6 +186,10 @@ application_train_FE_baked <- juice(application_train_FE_rec)
 
 ### Data Splitting
 
+```{r}
+table(application_train_FE_baked$TARGET)
+```
+
 ### Random Split of Data
 
 ```{r}
@@ -219,93 +223,123 @@ For this split, I am thinking we
 ### ROC-AUC, Accuracy, F-1, Specificity, Recall, Precision
 ```{r}
 accuracy <- function(y_hat, y){
-    correct <- sum(y_hat == y)
-    total <- length(y)
-    return(correct / total)
+  correct <- sum(y_hat == y, na.rm = TRUE)
+  total <- length(y)
+  return(correct / total)
 }
 
 precision <- function(y_hat, y){
-    tp <- sum((y_hat == 1) & (y == 1))
-    fp <- sum((y_hat == 1) & (y == 0))
-    precision <- tp / (tp+fp)
-    return(precision)
+  tp <- sum((y_hat == 1) & (y == 1), na.rm = TRUE)
+  fp <- sum((y_hat == 1) & (y == 0), na.rm = TRUE)
+  if ((tp + fp) == 0) return(NA_real_)
+  return(tp / (tp + fp))
 }
 
 recall <- function(y_hat, y){
-    tp <- sum ((y_hat == 1) & (y ==1))
-    fn <- sum ((y_hat == 0) & (y == 1))
-    recall <- tp / (tp+fn)
-    return(recall)
+  tp <- sum((y_hat == 1) & (y == 1), na.rm = TRUE)
+  fn <- sum((y_hat == 0) & (y == 1), na.rm = TRUE)
+  if ((tp + fn) == 0) return(NA_real_)
+  return(tp / (tp + fn))
 }
 
 f1 <- function(y_hat, y){
-    precision <- precision(y_hat, y)
-    recall <- recall(y_hat, y)
-    return (2 * (precision * recall) / (precision + recall))
+  p <- precision(y_hat, y)
+  r <- recall(y_hat, y)
+  if (is.na(p) | is.na(r) | (p + r) == 0) return(NA_real_)
+  return(2 * (p * r) / (p + r))
 }
 
 specificity <- function(y_hat, y){
-    fp <- sum ((y_hat == 1) & (y == 0))
-    tn <- sum ((y_hat == 0) & (y == 0))
-    return (tn/(tn+fp))
+  fp <- sum((y_hat == 1) & (y == 0), na.rm = TRUE)
+  tn <- sum((y_hat == 0) & (y == 0), na.rm = TRUE)
+  if ((tn + fp) == 0) return(NA_real_)
+  return(tn / (tn + fp))
 }
 
-roc_auc <- function(y, y_hat){
-    thresholds <- seq(0, 1, by = 0.01)
-    tpr <- c()
-    fpr <- c()
-    for (t in thresholds){
-        tp <- sum((y_hat >= t) & (y == 1))
-        fn <- sum((y_hat < t) & (y == 1))
-        fp <- sum((y_hat >= t) & (y == 0))
-        tn <- sum((y_hat < t) & (y == 0))
-        tpr <- c(tpr, tp / (tp + fn))
-        fpr <- c(fpr, fp / (fp + tn))
-    }
-    auc <- 0
-    for (i in 2:length(tpr)){
-        auc <- auc + (fpr[i] - fpr[i-1]) * (tpr[i] + tpr[i-1]) / 2
-    }
-    return(auc)
+roc_auc <- function(y_true, y_pred_prob){
+  y_true <- as.numeric(y_true)
+  y_pred_prob <- as.numeric(y_pred_prob)
+  if (all(y_pred_prob %in% c(0, 1))) {
+    tp <- sum(y_pred_prob == 1 & y_true == 1)
+    tn <- sum(y_pred_prob == 0 & y_true == 0)
+    fp <- sum(y_pred_prob == 1 & y_true == 0)
+    fn <- sum(y_pred_prob == 0 & y_true == 1)
+    tpr <- tp / (tp + fn)
+    fpr <- fp / (fp + tn)
+    return(0.5 * (1 + tpr - fpr))
+  }
+  
+  thresholds <- sort(unique(c(0, y_pred_prob, 1)), decreasing = TRUE)
+  tpr <- numeric(length(thresholds))
+  fpr <- numeric(length(thresholds))
+  for (i in seq_along(thresholds)) {
+    t <- thresholds[i]
+    tp <- sum((y_pred_prob >= t) & (y_true == 1))
+    fn <- sum((y_pred_prob <  t) & (y_true == 1))
+    fp <- sum((y_pred_prob >= t) & (y_true == 0))
+    tn <- sum((y_pred_prob <  t) & (y_true == 0))
+    tpr[i] <- ifelse((tp + fn) == 0, 0, tp / (tp + fn))
+    fpr[i] <- ifelse((fp + tn) == 0, 0, fp / (fp + tn))
+  }
+  ord <- order(fpr)
+  auc <- sum(diff(fpr[ord]) * (head(tpr[ord], -1) + tail(tpr[ord], -1)) / 2)
+  return(abs(auc))
 }
-
 ```
 
 ### Cross Validation Function
 ```{r}
-cross_val <- function(model, formula, data, k = 5, costVal=NULL, marginVal=NULL){
-    set.seed(23)
-    folds <- sample((rep(1:k, length.out = nrow(data))))
-    metrics <- data.frame(Accuracy = numeric(k+1),
-                          F1 = numeric(k+1),
-                          Precision = numeric(k+1),
-                          Recall = numeric(k+1),
-                          Specificity = numeric(k+1),
-                          ROC_AUC = numeric(k+1))
-    for (i in 1:k){
-        train_fold = data[folds != i, ]
-        val_fold = data[folds == i,]
-        if (deparse(substitute(model)) == "SVC_Model") {
-          y_hat <- model(trainData = train_fold, valData = val_fold, formula = formula, costVal=0.1, marginVal=1)
-        } else {
-          y_hat <- model(trainData = train_fold , valData = val_fold, formula = formula)
-        }
-        y_hat <- as.numeric(as.character(y_hat$.pred_class))
-        y <- as.numeric(as.character(val_fold$TARGET))
-        metrics$Accuracy[i] <- accuracy(y_hat, y)
-        metrics$Precision[i] <- precision(y_hat, y)
-        metrics$Recall[i] <- recall(y_hat, y)
-        metrics$F1[i] <- f1(y_hat, y)
-        metrics$Specificity[i] <- specificity(y_hat, y)
-        metrics$ROC_AUC[i] <- roc_auc(y, y_hat)
+cross_val <- function(model, formula, data, k = 5, costVal = NULL, marginVal = NULL){
+  set.seed(23)
+  folds <- sample(rep(1:k, length.out = nrow(data)))
+  metrics <- data.frame(
+    Accuracy = numeric(k),
+    F1 = numeric(k),
+    Precision = numeric(k),
+    Recall = numeric(k),
+    Specificity = numeric(k),
+    ROC_AUC = numeric(k)
+  )
+  for (i in 1:k){
+    train_fold <- data[folds != i, ]
+    val_fold   <- data[folds == i, ]
+    if (deparse(substitute(model)) == "SVC_Model") {
+      preds <- model(trainData = train_fold, valData = val_fold, formula = formula, costVal = costVal, marginVal = marginVal)
+    } else {
+      preds <- model(trainData = train_fold, valData = val_fold, formula = formula)
     }
-    metrics$Accuracy[k+1] <- mean(metrics$Accuracy)
-    metrics$Precision[k+1] <- mean(metrics$Precision)
-    metrics$Recall[k+1] <- mean(metrics$Recall)
-    metrics$F1[k+1] <- mean(metrics$F1)
-    metrics$Specificity[k+1] <- mean(metrics$Specificity)
-    metrics$ROC_AUC[k+1] <- mean(metrics$ROC_AUC)
-    return(metrics)
+    if (".pred_1" %in% names(preds)) {
+      y_pred_prob <- as.numeric(preds$.pred_1)
+      y_hat <- ifelse(y_pred_prob >= 0.5, 1, 0)
+    } else if (".pred_class" %in% names(preds)) {
+      y_hat <- as.numeric(as.character(preds$.pred_class))
+      y_pred_prob <- y_hat
+    } else {
+      stop("Predictions must contain either .pred_class or .pred_1 columns")
+    }
+    y <- as.numeric(as.character(val_fold$TARGET))
+    y_hat[is.na(y_hat)] <- 0
+    y[is.na(y)] <- 0
+    
+    metrics$Accuracy[i] <- accuracy(y_hat, y)
+    metrics$Precision[i] <- precision(y_hat, y)
+    metrics$Recall[i] <- recall(y_hat, y)
+    metrics$F1[i] <- f1(y_hat, y)
+    metrics$Specificity[i] <- specificity(y_hat, y)
+    metrics$ROC_AUC[i] <- roc_auc(y, y_pred_prob)
+  }
+  avg_metrics <- data.frame(
+    Accuracy = mean(metrics$Accuracy, na.rm = TRUE),
+    F1 = mean(metrics$F1, na.rm = TRUE),
+    Precision = mean(metrics$Precision, na.rm = TRUE),
+    Recall = mean(metrics$Recall, na.rm = TRUE),
+    Specificity = mean(metrics$Specificity, na.rm = TRUE),
+    ROC_AUC = mean(metrics$ROC_AUC, na.rm = TRUE)
+  )
+  
+  metrics <- rbind(metrics, avg_metrics)
+  rownames(metrics)[nrow(metrics)] <- "Mean"
+  return(metrics)
 }
 ```
 
@@ -328,14 +362,23 @@ formula <- generateModelFormula(yResponse,xPredictors)
 
 
 ```{r}
-# logistic regression model function
+library(hardhat)
+# Logistic Regression Model with class weights
 logistic_regression_model <- function(trainData, valData, formula){
-  fitted_logistic_model <- logistic_reg() %>%  
-    set_engine("glm") %>% 
-    set_mode("classification")%>%
-    fit(formula,data=trainData)
-  pred_class <- predict(fitted_logistic_model, new_data=valData, type="class")
-  return(pred_class)
+  ratio <- sum(trainData$TARGET == 0) / sum(trainData$TARGET == 1)
+  trainData <- trainData %>%
+    mutate(case_wt = ifelse(TARGET == 1, ratio, 1)) %>%
+    mutate(case_wt = round(case_wt))
+  wts <- hardhat::frequency_weights(trainData$case_wt)
+  fitted_logistic_model <- logistic_reg() %>%
+    set_engine("glm") %>%
+    set_mode("classification") %>%
+    fit(formula, data = trainData, case_weights = wts)
+  pred_class <- predict(fitted_logistic_model, new_data = valData, type = "class")
+  pred_prob  <- predict(fitted_logistic_model, new_data = valData, type = "prob")
+
+  preds <- bind_cols(pred_class, pred_prob)
+  return(preds)
 }
 ```
 
