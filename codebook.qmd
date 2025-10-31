@@ -30,8 +30,38 @@ prevapp <- read_csv(here::here("data/previous_application.csv"))
 sample_sub <- read_csv(here::here("data/sample_submission.csv"))
 ```
 
-## Data
-### Data Engineering
+## Data Splitting
+
+### Random Split of Data
+
+```{r}
+set.seed(123)
+train_size <- floor(0.80 * nrow(application_train))
+train_indices <- sample(seq_len(nrow(application_train)), size = train_size)
+ran_train_data <- application_train[train_indices, ]
+ran_val_data <- application_train[-train_indices, ]
+```
+
+### Stratified Split
+
+```{r}
+split_strat <- initial_split(application_train, prop = 0.8, strata = "TARGET")
+strat_train_data <- training(split_strat)
+strat_val_data <- testing(split_strat)
+```
+
+### Non Random Split - Represent Test Data
+
+For this split, I am thinking we 
+
+```{r}
+
+```
+
+## Data Engineering
+
+<<<<<<< Updated upstream
+=======
 These are the columns from the main table we decided to keep. Decided to keep 1 score out of 3, drop all that seemed irrelevant or repetitive, and those that had over 15000 nas. The columns kept that did have NA's were external source 2, which had roughly 600 NA's, which we we dropped due to the small number compared to the full data. Also feature engineering of the Region Rating using the two we deemed most important. Moving forward, should we keep the document flags?
 
 
@@ -97,19 +127,6 @@ prev_all <- prev_en |>
   )
 
 
-prev_last1 <- prev_en |>
-  arrange(SK_ID_CURR, dplyr::desc(.data[["DAYS_DECISION"]])) |>
-  group_by(SK_ID_CURR) |>
-  slice_head(n = 1) |>
-  summarise(
-    prev_last1_amt_credit     = first(AMT_CREDIT),
-    prev_last1_cnt_payment    = first(CNT_PAYMENT),
-    prev_last1_app_to_credit  = first(app_to_credit),
-    prev_last1_ann_to_credit  = first(ann_to_credit),
-    prev_last1_status         = first(NAME_CONTRACT_STATUS),
-    .groups = "drop"
-  )
-
 prev_last3 <- prev_en |>
   arrange(SK_ID_CURR, dplyr::desc(.data[["DAYS_DECISION"]])) |>
   group_by(SK_ID_CURR) |>
@@ -139,38 +156,12 @@ prev_last5 <- prev_en |>
     .groups = "drop"
   )
 
-prev_first2 <- prev_en |>
-  arrange(SK_ID_CURR, .data[["DAYS_DECISION"]]) |>
-  group_by(SK_ID_CURR) |>
-  slice_head(n = 2) |>
-  summarise(
-    prev_first2_n                  = n(),
-    prev_first2_amt_credit_mean    = mean(AMT_CREDIT,    na.rm = TRUE),
-    prev_first2_cnt_payment_mean   = mean(CNT_PAYMENT,   na.rm = TRUE),
-    prev_first2_app_to_credit_mean = mean(app_to_credit, na.rm = TRUE),
-    prev_first2_ann_to_credit_mean = mean(ann_to_credit, na.rm = TRUE),
-    prev_first2_approved_rate      = mean(NAME_CONTRACT_STATUS == "Approved", na.rm = TRUE),
-    .groups = "drop"
-  )
 
 
-prev_first4 <- prev_en |>
-  arrange(SK_ID_CURR, .data[["DAYS_DECISION"]]) |>
-  group_by(SK_ID_CURR) |>
-  slice_head(n = 4) |>
-  summarise(
-    prev_first4_n                  = n(),
-    prev_first4_amt_credit_mean    = mean(AMT_CREDIT,    na.rm = TRUE),
-    prev_first4_cnt_payment_mean   = mean(CNT_PAYMENT,   na.rm = TRUE),
-    prev_first4_app_to_credit_mean = mean(app_to_credit, na.rm = TRUE),
-    prev_first4_ann_to_credit_mean = mean(ann_to_credit, na.rm = TRUE),
-    prev_first4_approved_rate      = mean(NAME_CONTRACT_STATUS == "Approved", na.rm = TRUE),
-    .groups = "drop"
-  )
 
 
 prev_features <- Reduce(function(x, y) left_join(x, y, by = "SK_ID_CURR"),
-                        list(prev_all, prev_last1, prev_last3, prev_last5, prev_first2, prev_first4))
+                        list(prev_all, prev_last3, prev_last5))
 
 application_train_FE <- clean_application_train |> left_join(prev_features, by = "SK_ID_CURR")
 ```
@@ -208,9 +199,33 @@ application_train_FE
 ```
 
 
+
+
+
+
+
 ```{r}
-colSums(is.na(application_train_FE))
+
+
+
+application_train_FE_new <- application_train_FE|>
+  filter(SK_ID_CURR!= 333092)|>
+  select(-prev_app_to_credit_mean)
+
+
+
+application_train_FE_rec <- recipe(TARGET ~ ., data = application_train_FE_new)|>
+   update_role(SK_ID_CURR, new_role = "id") |>
+    step_impute_mean(all_numeric_predictors())|>
+  step_nzv(all_numeric_predictors())|>
+   step_dummy(all_nominal_predictors(), one_hot = TRUE, role = "indicator") |>
+  step_normalize(all_numeric_predictors(), -has_role("id"),  -has_role("indicator"), na_rm = TRUE) |> 
+  
+  prep()
+
+application_train_FE_baked <- juice(application_train_FE_rec)
 ```
+
 
 ### Data Splitting
 
@@ -218,17 +233,17 @@ colSums(is.na(application_train_FE))
 
 ```{r}
 set.seed(123)
-application_train_FE$TARGET <- as.factor(application_train_FE$TARGET)
-train_size <- floor(0.80 * nrow(application_train_FE))
-train_indices <- sample(seq_len(nrow(application_train_FE)), size = train_size)
-ran_train_data <- application_train_FE[train_indices, ]
-ran_val_data <- application_train_FE[-train_indices, ]
+application_train_FE_baked$TARGET <- as.factor(application_train_FE_baked$TARGET)
+train_size <- floor(0.80 * nrow(application_train_FE_baked))
+train_indices <- sample(seq_len(nrow(application_train_FE_baked)), size = train_size)
+ran_train_data <- application_train_FE_baked[train_indices, ]
+ran_val_data <- application_train_FE_baked[-train_indices, ]
 ```
 
 ### Stratified Split
 
 ```{r}
-split_strat <- initial_split(application_train_FE, prop = 0.8, strata = "TARGET")
+split_strat <- initial_split(application_train_FE_baked, prop = 0.8, strata = "TARGET")
 strat_train_data <- training(split_strat)
 strat_val_data <- testing(split_strat)
 ```
