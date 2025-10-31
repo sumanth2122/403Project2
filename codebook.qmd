@@ -218,16 +218,17 @@ colSums(is.na(application_train_FE))
 
 ```{r}
 set.seed(123)
-train_size <- floor(0.80 * nrow(application_train))
-train_indices <- sample(seq_len(nrow(application_train)), size = train_size)
-ran_train_data <- application_train[train_indices, ]
-ran_val_data <- application_train[-train_indices, ]
+application_train_FE$TARGET <- as.factor(application_train_FE$TARGET)
+train_size <- floor(0.80 * nrow(application_train_FE))
+train_indices <- sample(seq_len(nrow(application_train_FE)), size = train_size)
+ran_train_data <- application_train_FE[train_indices, ]
+ran_val_data <- application_train_FE[-train_indices, ]
 ```
 
 ### Stratified Split
 
 ```{r}
-split_strat <- initial_split(application_train, prop = 0.8, strata = "TARGET")
+split_strat <- initial_split(application_train_FE, prop = 0.8, strata = "TARGET")
 strat_train_data <- training(split_strat)
 strat_val_data <- testing(split_strat)
 ```
@@ -252,15 +253,15 @@ accuracy <- function(y_hat, y){
 }
 
 precision <- function(y_hat, y){
-    tp <- sum ((y_hat == 1) && (y ==1))
-    fp <- sum ((y_hat == 1) && (y == 0))
+    tp <- sum((y_hat == 1) & (y == 1))
+    fp <- sum((y_hat == 1) & (y == 0))
     precision <- tp / (tp+fp)
     return(precision)
 }
 
 recall <- function(y_hat, y){
-    tp <- sum ((y_hat == 1) && (y ==1))
-    fn <- sum ((y_hat == 0) && (y == 1))
+    tp <- sum ((y_hat == 1) & (y ==1))
+    fn <- sum ((y_hat == 0) & (y == 1))
     recall <- tp / (tp+fn)
     return(recall)
 }
@@ -272,8 +273,8 @@ f1 <- function(y_hat, y){
 }
 
 specificity <- function(y_hat, y){
-    fp <- sum ((y_hat == 1) && (y == 0))
-    tn <- sum ((y_hat == 0) && (y == 0))
+    fp <- sum ((y_hat == 1) & (y == 0))
+    tn <- sum ((y_hat == 0) & (y == 0))
     return (tn/(tn+fp))
 }
 
@@ -282,10 +283,10 @@ roc_auc <- function(y, y_hat){
     tpr <- c()
     fpr <- c()
     for (t in thresholds){
-        tp <- sum((y_hat >= t) && (y == 1))
-        fn <- sum((y_hat < t) && (y == 1))
-        fp <- sum((y_hat >= t) && (y == 0))
-        tn <- sum((y_hat < t) && (y == 0))
+        tp <- sum((y_hat >= t) & (y == 1))
+        fn <- sum((y_hat < t) & (y == 1))
+        fp <- sum((y_hat >= t) & (y == 0))
+        tn <- sum((y_hat < t) & (y == 0))
         tpr <- c(tpr, tp / (tp + fn))
         fpr <- c(fpr, fp / (fp + tn))
     }
@@ -299,42 +300,46 @@ roc_auc <- function(y, y_hat){
 ```
 
 ### Cross Validation Function
-
-<<<<<<< Updated upstream
 ```{r}
-cross_val <- function(model, data, k =5){
+cross_val <- function(model, formula, data, k = 5, costVal=NULL, marginVal=NULL){
     set.seed(23)
     folds <- sample((rep(1:k, length.out = nrow(data))))
-    metrics <- data.frame(Accuracy = numeric(k),
-                          F1 = numeric(k),
-                          Specificity = numeric(k),
-                          ROC_AUC = numeric(k))
+    metrics <- data.frame(Accuracy = numeric(k+1),
+                          F1 = numeric(k+1),
+                          Precision = numeric(k+1),
+                          Recall = numeric(k+1),
+                          Specificity = numeric(k+1),
+                          ROC_AUC = numeric(k+1))
     for (i in 1:k){
         train_fold = data[folds != i, ]
         val_fold = data[folds == i,]
-
-        model_fit(model, data = train_fold)
-        preds <- predict(model, val_fold, type = "prob")
-        y_hat <- ifelse(preds$.pred_1 >= 0.5, 1, 0)
-        y <- val_fold$TARGET
+        if (deparse(substitute(model)) == "SVC_Model") {
+          y_hat <- model(trainData = train_fold, valData = val_fold, formula = formula, costVal=0.1, marginVal=1)
+        } else {
+          y_hat <- model(trainData = train_fold , valData = val_fold, formula = formula)
+        }
+        y_hat <- as.numeric(as.character(y_hat$.pred_class))
+        y <- as.numeric(as.character(val_fold$TARGET))
         metrics$Accuracy[i] <- accuracy(y_hat, y)
+        metrics$Precision[i] <- precision(y_hat, y)
+        metrics$Recall[i] <- recall(y_hat, y)
         metrics$F1[i] <- f1(y_hat, y)
         metrics$Specificity[i] <- specificity(y_hat, y)
-        metrics$ROC_AUC[i] <- roc_auc(y, preds$.pred_1)
-        metrics$Accuracy[k+1] <- mean(metrics$Accuracy)
-        metrics$F1[k+1] <- mean(metrics$F1)
-        metrics$Specificity[k+1] <- mean(metrics$Specificity)
-        metrics$ROC_AUC[k+1] <- mean(metrics$ROC_AUC)
+        metrics$ROC_AUC[i] <- roc_auc(y, y_hat)
     }
+    metrics$Accuracy[k+1] <- mean(metrics$Accuracy)
+    metrics$Precision[k+1] <- mean(metrics$Precision)
+    metrics$Recall[k+1] <- mean(metrics$Recall)
+    metrics$F1[k+1] <- mean(metrics$F1)
+    metrics$Specificity[k+1] <- mean(metrics$Specificity)
+    metrics$ROC_AUC[k+1] <- mean(metrics$ROC_AUC)
     return(metrics)
 }
 ```
 
 
 ## Models
-
 ### Logistic Regression
-
 ```{r}
 library(MASS)
 generateModelFormula <- function(yResponse,xPredictors){
@@ -346,54 +351,43 @@ generateModelFormula <- function(yResponse,xPredictors){
 ```{r}
 yResponse="TARGET"
 xPredictors=c("AMT_INCOME_TOTAL","AMT_CREDIT","AMT_ANNUITY","AMT_GOODS_PRICE")
-generateModelFormula(yResponse,xPredictors)
+formula <- generateModelFormula(yResponse,xPredictors)
 ```
 
-```{r}
-strat_train_data$TARGET <- as.factor(strat_train_data$TARGET)
-ran_train_data$TARGET <- as.factor(ran_train_data$TARGET)
-ran_val_data$TARGET <- as.factor(ran_val_data$TARGET)
-```
 
 ```{r}
-#logistic regression model function
-logistic_regression_model_fit <- function(trainDataFrame,valData, yResponse, xPredictors){
-  trainDataFrame[[yResponse]] <- as.factor(trainDataFrame[[yResponse]])
-  formula <- generateModelFormula(yResponse,xPredictors)
+# logistic regression model function
+logistic_regression_model <- function(trainData, valData, formula){
   fitted_logistic_model <- logistic_reg() %>%  
     set_engine("glm") %>% 
     set_mode("classification")%>%
-    fit(formula,data=trainDataFrame)
-  tidy(fitted_logistic_model)
-  pred_class <- predict(fitted_logistic_model,new_data=valData,type="class")
-  pred_class
-  class_prob_prediction <- predict(fitted_logistic_model,new_data=valData,type="prob")
-  class_prob_prediction
+    fit(formula,data=trainData)
+  pred_class <- predict(fitted_logistic_model, new_data=valData, type="class")
+  return(pred_class)
 }
 ```
 
 ```{r}
 # run logistic regression
 yResponse="TARGET"
-xPredictors=c("AMT_INCOME_TOTAL","AMT_CREDIT","AMT_ANNUITY","AMT_GOODS_PRICE")
-strat_model_lr <- logistic_regression_model_fit(strat_train_data,strat_val_data,yResponse,xPredictors)
-ran_model_lr <- logistic_regression_model_fit(ran_train_data,ran_val_data,yResponse,xPredictors)
+xPredictors=c("AMT_INCOME_TOTAL","AMT_CREDIT","AMT_ANNUITY")
+formula <- generateModelFormula(yResponse,xPredictors)
+
+strat_model_lr <- cross_val(logistic_regression_model, formula, strat_train_data)
+strat_model_lr
+ran_model_lr <- cross_val(logistic_regression_model, formula, ran_train_data)
 ```
 
 ### Support Vector Machine Classification Model
 
 ```{r}
 #SVC Model function
-SVMClassification <- function(trainData,valData,yResponse,xPredictors,costVal,marginVal){
-  #costVal and marginVal is a hyperparameter here!! 
-  svm_model <- svm_linear(cost=costVal,margin=marginVal) %>%
+SVC_Model <- function(trainData, valData, formula, costVal, marginVal){
+  svm_model <- svm_linear( cost=costVal, margin=marginVal) %>%
     set_mode("classification") %>% 
     set_engine("LiblineaR")
-  formula <- generateModelFormula(yResponse,xPredictors)
-  formula
-  svmModel_fit <- svm_model %>% fit(formula,data=trainData)
-  svmModel_fit
-  predict(svmModel_fit,valData)
+  svmModel_fit <- svm_model %>% fit(formula, data=trainData)
+  return(predict(svmModel_fit, valData, type="class"))
 }
 ```
 
@@ -401,32 +395,30 @@ SVMClassification <- function(trainData,valData,yResponse,xPredictors,costVal,ma
 #run SVMClassification
 costVal=0.1
 marginVal=1
-strat_model_svc <- SVMClassification(strat_train_data,strat_val_data,yResponse,xPredictors,costVal,marginVal)
-ran_model_svc <- SVMClassification(ran_train_data,ran_val_data,yResponse,xPredictors,costVal,marginVal)
+strat_model_svc <- cross_val(SVC_Model, formula, strat_train_data, costVal=costVal, marginVal=marginVal)
+strat_model_svc
+ran_model_svc <- cross_val(SVC_Model, formula, ran_train_data, costVal=costVal, marginVal=marginVal)
 ```
 
 
 ### LDA: Linear Discriminant Analysis Model
-
 ```{r}
 #LDA: Linear Discriminant Analysis Model
-LDA_model_fit <- function(trainData,valData,yResponse,xPredictors){
+LDA_model <- function(trainData, valData, formula){
   discrim_model <- discrim_linear(
     mode="classification",
     penalty=NULL,
     regularization_method=NULL,
     engine="MASS"
   )
-  formula <- generateModelFormula(yResponse,xPredictors)
-  discrim_modelFit <- discrim_model %>% fit(formula,data=trainData)
-  discrim_modelFit
-  predict(discrim_modelFit,valData)
-  
+  discrim_modelFit <- discrim_model %>% fit(formula, data=trainData)
+  return(predict(discrim_modelFit, valData, type="class"))
 }
 ```
 
 ```{r}
 #run LDA
-strat_model_lda <- LDA_model_fit(strat_train_data, strat_val_data, yResponse, xPredictors)
-ran_model_lda <- LDA_model_fit(ran_train_data, ran_val_data, yResponse, xPredictors)
+strat_model_lda <- cross_val(LDA_model, formula, strat_train_data)
+strat_model_lda
+ran_model_lda <- cross_val(LDA_model, formula, ran_train_data)
 ```
