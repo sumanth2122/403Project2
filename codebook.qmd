@@ -127,19 +127,6 @@ prev_all <- prev_en |>
   )
 
 
-prev_last1 <- prev_en |>
-  arrange(SK_ID_CURR, dplyr::desc(.data[["DAYS_DECISION"]])) |>
-  group_by(SK_ID_CURR) |>
-  slice_head(n = 1) |>
-  summarise(
-    prev_last1_amt_credit     = first(AMT_CREDIT),
-    prev_last1_cnt_payment    = first(CNT_PAYMENT),
-    prev_last1_app_to_credit  = first(app_to_credit),
-    prev_last1_ann_to_credit  = first(ann_to_credit),
-    prev_last1_status         = first(NAME_CONTRACT_STATUS),
-    .groups = "drop"
-  )
-
 prev_last3 <- prev_en |>
   arrange(SK_ID_CURR, dplyr::desc(.data[["DAYS_DECISION"]])) |>
   group_by(SK_ID_CURR) |>
@@ -169,38 +156,12 @@ prev_last5 <- prev_en |>
     .groups = "drop"
   )
 
-prev_first2 <- prev_en |>
-  arrange(SK_ID_CURR, .data[["DAYS_DECISION"]]) |>
-  group_by(SK_ID_CURR) |>
-  slice_head(n = 2) |>
-  summarise(
-    prev_first2_n                  = n(),
-    prev_first2_amt_credit_mean    = mean(AMT_CREDIT,    na.rm = TRUE),
-    prev_first2_cnt_payment_mean   = mean(CNT_PAYMENT,   na.rm = TRUE),
-    prev_first2_app_to_credit_mean = mean(app_to_credit, na.rm = TRUE),
-    prev_first2_ann_to_credit_mean = mean(ann_to_credit, na.rm = TRUE),
-    prev_first2_approved_rate      = mean(NAME_CONTRACT_STATUS == "Approved", na.rm = TRUE),
-    .groups = "drop"
-  )
+p
 
-
-prev_first4 <- prev_en |>
-  arrange(SK_ID_CURR, .data[["DAYS_DECISION"]]) |>
-  group_by(SK_ID_CURR) |>
-  slice_head(n = 4) |>
-  summarise(
-    prev_first4_n                  = n(),
-    prev_first4_amt_credit_mean    = mean(AMT_CREDIT,    na.rm = TRUE),
-    prev_first4_cnt_payment_mean   = mean(CNT_PAYMENT,   na.rm = TRUE),
-    prev_first4_app_to_credit_mean = mean(app_to_credit, na.rm = TRUE),
-    prev_first4_ann_to_credit_mean = mean(ann_to_credit, na.rm = TRUE),
-    prev_first4_approved_rate      = mean(NAME_CONTRACT_STATUS == "Approved", na.rm = TRUE),
-    .groups = "drop"
-  )
 
 
 prev_features <- Reduce(function(x, y) left_join(x, y, by = "SK_ID_CURR"),
-                        list(prev_all, prev_last1, prev_last3, prev_last5, prev_first2, prev_first4))
+                        list(prev_all, prev_last3, prev_last5))
 
 application_train_FE <- clean_application_train |> left_join(prev_features, by = "SK_ID_CURR")
 ```
@@ -238,9 +199,19 @@ application_train_FE
 ```
 
 
+
+
+
 ```{r}
-colSums(is.na(application_train_FE))
+application_train_FE<- fastDummies::dummy_cols(application_train_FE, remove_selected_columns = TRUE)
 ```
+
+
+```{r}
+
+
+```
+
 
 
 ## Metric Custom Functions
