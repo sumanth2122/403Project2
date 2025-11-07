@@ -21,11 +21,7 @@ library(corrplot)
 ```{r}
 application_test<-read_csv(here::here("data/application_test.csv")) 
 application_train <- read_csv(here::here("data/application_train.csv")) 
-bureau_bal <- read_csv(here::here("data/bureau_balance.csv"))
 bureau <- read_csv(here::here("data/bureau.csv")) 
-ccbal <- read_csv(here::here("data/credit_card_balance.csv")) 
-homecredit <- read_csv(here::here("data/HomeCredit_columns_description.csv")) 
-cashbal <- read_csv(here::here("data/POS_CASH_balance.csv")) 
 prevapp <- read_csv(here::here("data/previous_application.csv")) 
 sample_sub <- read_csv(here::here("data/sample_submission.csv"))
 ```
@@ -385,7 +381,7 @@ logistic_regression_model <- function(trainData, valData, formula){
 ```{r}
 # run logistic regression
 yResponse="TARGET"
-xPredictors=c("AMT_INCOME_TOTAL","AMT_CREDIT","AMT_ANNUITY")
+xPredictors <- setdiff(names(strat_train_data), c("TARGET", "SK_ID_CURR"))
 formula <- generateModelFormula(yResponse,xPredictors)
 
 strat_model_lr <- cross_val(logistic_regression_model, formula, strat_train_data)
@@ -399,9 +395,10 @@ ran_model_lr
 ```{r}
 #SVC Model function
 SVC_Model <- function(trainData, valData, formula, costVal, marginVal){
-  svm_model <- svm_linear( cost=costVal, margin=marginVal) %>%
+  ratio <- sum(trainData$TARGET == 0) / sum(trainData$TARGET == 1)
+  svm_model <- svm_linear(cost=costVal, margin=marginVal) %>%
     set_mode("classification") %>% 
-    set_engine("LiblineaR")
+    set_engine("LiblineaR", type=1, class_weights = c("0"=1, "1"=ratio))
   svmModel_fit <- svm_model %>% fit(formula, data=trainData)
   return(predict(svmModel_fit, valData, type="class"))
 }
@@ -422,11 +419,13 @@ ran_model_svc
 ```{r}
 #LDA: Linear Discriminant Analysis Model
 LDA_model <- function(trainData, valData, formula){
+  ratio <- sum(trainData$TARGET == 0) / sum(trainData$TARGET == 1)
   discrim_model <- discrim_linear(
     mode="classification",
     penalty=NULL,
     regularization_method=NULL,
-    engine="MASS"
+    engine="MASS",
+    class_weights = c("0"=1, "1"=ratio)
   )
   discrim_modelFit <- discrim_model %>% fit(formula, data=trainData)
   return(predict(discrim_modelFit, valData, type="class"))
