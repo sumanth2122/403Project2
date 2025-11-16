@@ -8,6 +8,7 @@ jupyter: python3
 ## Imports
 
 ```{r}
+# Load necessary libraries
 library(Hmisc)
 library(tidyverse)
 library(readr) 
@@ -19,6 +20,7 @@ library(corrplot)
 
 ## Reading in the Data
 ```{r}
+# Load datasets
 application_test<-read_csv(here::here("data/application_test.csv")) 
 application_train <- read_csv(here::here("data/application_train.csv")) 
 bureau <- read_csv(here::here("data/bureau.csv")) 
@@ -183,8 +185,6 @@ application_train_FE_baked <- juice(application_train_FE_rec)
 ```{r}
 write.csv(application_train_FE_baked, here::here("data/application_train_FE_baked.csv"), row.names = FALSE)
 ```
-
-### Data Splitting
 
 ```{r}
 table(application_train_FE_baked$TARGET)
