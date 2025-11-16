@@ -1,0 +1,77 @@
+---
+title: "FairnessCheck"
+format: html
+editor: visual
+---
+
+## Running Libraries 
+
+```{r}
+library(dplyr)
+```
+
+## Data Set Loading 
+
+```{r}
+#Reading in the original application_train dataset and the data_fe dataset with feature engineered parts! 
+application_train <- read_csv(here::here("data/application_train.csv")) 
+data_fe <- read_csv(here::here("data/data_fe.csv"))
+
+```
+
+```{r}
+#displaying application_train
+application_train
+```
+
+```{r}
+#displaying data_fe
+data_fe
+```
+
+```{r}
+colnames(data_fe)
+```
+
+**Selecting Highly Correlated Predictor Feature Columns AND Protected Variable Columns from data_fe dataset**
+
+```{r}
+#high correlation predictor features and protected variables subsetted from data_fe for analysis! 
+
+data_feRev <- data_fe |>
+  select('SK_ID_CURR',
+'TARGET', 'EXT_SOURCE_2', 'ext2_sq', 'prev_refused_rate', 'prev_share_mean_all', 'prev_rate_med_all', 'prev_rate_mean_all', 'prev_approved_rate', 'REGION_RATING', 'NAME_INCOME_TYPE_Working', 'NAME_EDUCATION_TYPE_Higher.education', 'prev_last5_approved_rate', 'DAYS_LAST_PHONE_CHANGE', 'phone_years', 'prev_last3_approved_rate', 'DAYS_ID_PUBLISH', 'id_years', 'NAME_EDUCATION_TYPE_Secondary...secondary.special', 'NAME_INCOME_TYPE_Pensioner', 'debt_ratio', "CODE_GENDER_F","CODE_GENDER_M"                                   ,"CODE_GENDER_XNA", "NAME_INCOME_TYPE_Businessman",                   "NAME_INCOME_TYPE_Commercial.associate","NAME_INCOME_TYPE_Maternity.leave"        ,"NAME_INCOME_TYPE_Pensioner","NAME_INCOME_TYPE_State.servant"                   ,"NAME_INCOME_TYPE_Student","NAME_INCOME_TYPE_Unemployed",                      "NAME_INCOME_TYPE_Working", "NAME_FAMILY_STATUS_Civil.marriage"                ,"NAME_FAMILY_STATUS_Married","NAME_FAMILY_STATUS_Separated"                     ,"NAME_FAMILY_STATUS_Single...not.married","NAME_FAMILY_STATUS_Widow", "DAYS_BIRTH"
+)
+
+data_feRev
+```
+
+```{r}
+colnames(data_feRev)
+```
+
+```{r}
+high_CorrFeatures <- c("EXT_SOURCE_2","ext2_sq"                                   ,"prev_refused_rate","prev_share_mean_all"                              
+,"prev_rate_med_all","prev_rate_mean_all"                               
+,"prev_approved_rate","REGION_RATING"                                    
+,"NAME_INCOME_TYPE_Working","NAME_EDUCATION_TYPE_Higher.education"             
+,"prev_last5_approved_rate","DAYS_LAST_PHONE_CHANGE"                           
+,"phone_years","prev_last3_approved_rate"                         
+,"DAYS_ID_PUBLISH","id_years"                                         
+,"NAME_EDUCATION_TYPE_Secondary...secondary.special","NAME_INCOME_TYPE_Pensioner"   ,"debt_ratio")
+
+protected_vars <- c("CODE_GENDER_F"                                    ,"CODE_GENDER_M","CODE_GENDER_XNA"                                  ,"NAME_INCOME_TYPE_Businessman","NAME_INCOME_TYPE_Commercial.associate"            
+,"NAME_INCOME_TYPE_Maternity.leave","NAME_INCOME_TYPE_State.servant"                ,"NAME_INCOME_TYPE_Student","NAME_INCOME_TYPE_Unemployed"                      
+,"NAME_FAMILY_STATUS_Civil.marriage","NAME_FAMILY_STATUS_Married"                   ,"NAME_FAMILY_STATUS_Separated","NAME_FAMILY_STATUS_Single...not.married"          
+,"NAME_FAMILY_STATUS_Widow","DAYS_BIRTH"  )
+```
+
+```{r}
+X <- data_feRev[,high_CorrFeatures]
+Y <- data_feRev[,protected_vars]
+```
+
+```{r}
+corr_matrix <- cor(X, Y, use = "pairwise.complete.obs")
+corr_matrix
+```
